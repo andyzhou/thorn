@@ -96,6 +96,13 @@ func (f *Room) HasPlayer(id uint64) bool {
 	return false
 }
 
+func (f *Room) VerifyToken(token string) bool {
+	if token != f.secretKey {
+		return false
+	}
+	return true
+}
+
 //////////////////
 //cb for iConnect
 //////////////////

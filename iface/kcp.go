@@ -5,6 +5,6 @@ package iface
  */
 
 type IKcpServer interface {
-	Stop()
-	Start()
+	Quit()
+	Start(cb IConnCallBack, protocol IProtocol)
 }

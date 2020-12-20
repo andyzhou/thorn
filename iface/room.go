@@ -12,6 +12,7 @@ type IRoom interface {
 	GetTimeStamp() int64
 	IsOver() bool
 	HasPlayer(id uint64) bool
+	VerifyToken(string) bool
 	IGameListener
 	IConnCallBack
 }
