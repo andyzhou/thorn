@@ -16,7 +16,7 @@ type Protocol struct {
 }
 
 //construct
-func NewProcol() *Protocol {
+func NewProtocol() *Protocol {
 	//self init
 	this := &Protocol{
 	}
@@ -25,6 +25,7 @@ func NewProcol() *Protocol {
 
 //read packet
 func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
+	//try read data
 	buff := make([]byte, MinPacketLen, MinPacketLen)
 	_, err := io.ReadFull(reader, buff)
 	if err != nil {
@@ -36,7 +37,7 @@ func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
 	}
 
 	//init packet
-	packet := NewPacket()
+	packet := &Packet{}
 
 	//set id
 	packet.id = buff[dataLen]

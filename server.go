@@ -45,7 +45,7 @@ func (f *Server) Stop() {
 func (f *Server) Start() {
 	if f.kcp != nil {
 		//start
-		f.kcp.Start(room.NewRouter(f.manager), protocol.NewProcol())
+		f.kcp.Start(room.NewRouter(f.manager), protocol.NewProtocol())
 	}
 }
 

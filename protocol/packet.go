@@ -3,6 +3,7 @@ package protocol
 import (
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
+	"log"
 )
 
 /*
@@ -45,6 +46,17 @@ func NewPacket(
 	switch v := msg.(type) {
 	case []byte:
 		this.data = v
+	case proto.Message:
+		if mashData, err := proto.Marshal(v); err == nil {
+			this.data = mashData
+		}else{
+			log.Printf("[NewPacket] proto marshal msg: %d error: %v\n",
+				id, err)
+			return nil
+		}
+	default:
+		log.Printf("[NewPacket] error msg type msg: %d\n", id)
+		return nil
 	}
 
 	return this
