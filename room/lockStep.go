@@ -2,6 +2,7 @@ package room
 
 import (
 	"github.com/andyzhou/thorn/iface"
+	"github.com/andyzhou/thorn/pb"
 	"sync/atomic"
 )
 
@@ -33,7 +34,7 @@ func (f *LockStep) Reset() {
 }
 
 //push frame data
-func (f *LockStep) PushCommand(data iface.IInputData) bool {
+func (f *LockStep) PushCommand(data *pb.InputData) bool {
 	//basic check
 	if data == nil {
 		return false

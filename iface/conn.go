@@ -19,6 +19,7 @@ type IConnCallBack interface {
 type IConn interface {
 	Close()
 	IsClosed() bool
+	Do()
 	AsyncWritePacket(packet IPacket, duration time.Duration) error
 	GetRawConn() net.Conn
 	GetExtraData() interface{}

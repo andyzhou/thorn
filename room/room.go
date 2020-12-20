@@ -1,8 +1,9 @@
 package room
 
 import (
-	"github.com/andyzhou/thorn/game"
 	"github.com/andyzhou/thorn/iface"
+	"github.com/andyzhou/thorn/protocol"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,14 +24,14 @@ const (
 
 //face info
 type Room struct {
-	id uint64
+	id uint64 //room id
 	secretKey string
 	closeFlag int32
 	timeStamp int64
 	players []uint64
 	inChan chan iface.IConn
 	outChan chan iface.IConn
-	messageChan chan iface.IPacket
+	messageChan chan iface.IMessage
 	closeChan chan bool
 	game iface.IGame `game instance`
 	wg sync.WaitGroup
@@ -48,19 +49,19 @@ func NewRoom(
 		players:make([]uint64, 0),
 		inChan:make(chan iface.IConn, InOutChanSize),
 		outChan:make(chan iface.IConn, InOutChanSize),
-		messageChan:make(chan iface.IPacket, MessageChanSize),
+		messageChan:make(chan iface.IMessage, MessageChanSize),
 		closeChan:make(chan bool, 1),
 	}
 
 	//init game instance
-	this.game = game.NewGame(id, players, randomSeed, this)
+	this.game = NewGame(id, players, randomSeed, this)
 
 	return this
 }
 
 func (f *Room) Stop() {
 	close(f.closeChan)
-	f.wg.Done()
+	f.wg.Wait()
 }
 
 func (f *Room) Start() {
@@ -107,14 +108,29 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 }
 
 //cb for OnMessage
-func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) bool {
+func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 	//try get data
-	_, ok := conn.GetExtraData().(uint64)
+	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {
-		return false
+		bRet = false
+		return
 	}
-	f.messageChan <- packet
-	return true
+
+	//catch panic
+	defer func() {
+		if err := recover(); err != nil {
+			bRet = false
+			return
+		}
+	}()
+
+	//init message
+	message := protocol.NewMessage(playerId, packet)
+
+	//send to chan
+	f.messageChan <- message
+	bRet = true
+	return
 }
 
 //cb for OnClose
@@ -127,17 +143,20 @@ func (f *Room) OnClose(conn iface.IConn) {
 //cb for IGameListener
 //////////////////////
 
-func (f *Room) OnJoinGame(uint64, uint64) {
-
+func (f *Room) OnJoinGame(id, playerId uint64) {
+	log.Printf("room %d OnJoinGame %d\n", id, playerId)
 }
-func (f *Room) OnStartGame(uint64) {
 
+func (f *Room) OnStartGame(id uint64) {
+	log.Printf("room %d OnStartGame\n", id)
 }
-func (f *Room) OnLeaveGame(uint64, uint64) {
 
+func (f *Room) OnLeaveGame(id, playerId uint64) {
+	log.Printf("room %d OnLeaveGame %d\n", id, playerId)
 }
+
 func (f *Room) OneGameOver(uint64) {
-
+	atomic.StoreInt32(&f.closeFlag, 1)
 }
 
 //////////////
@@ -149,6 +168,9 @@ func (f *Room) runMainProcess() {
 	var (
 		ticker = time.NewTicker(TickTimer)
 		timer = time.NewTimer(TimeOut)
+		conn iface.IConn
+		message iface.IMessage
+		isOk, bRet bool
 	)
 
 	f.wg.Add(1)
@@ -165,10 +187,51 @@ func (f *Room) runMainProcess() {
 		case <- f.closeChan:
 			//closed
 			return
+
+		case <- ticker.C:
+			{
+				if !f.game.Tick(time.Now().Unix()) {
+					break
+				}
+			}
+
 		case <- timer.C:
 			//timer out
 			return
 
+		case message, isOk = <- f.messageChan://message
+			if isOk {
+				f.game.ProcessMessage(message.GetId(), message.GetPacket())
+			}
+
+		case conn, isOk = <- f.inChan://join
+			if isOk {
+				playerId, ok := conn.GetExtraData().(uint64)
+				if ok {
+					bRet = f.game.JoinGame(playerId, conn)
+					if !bRet {
+						conn.Close()
+					}
+				}else{
+					conn.Close()
+				}
+			}
+
+		case conn, isOk = <- f.outChan://leave
+			if isOk {
+				playerId, ok := conn.GetExtraData().(uint64)
+				if ok {
+					bRet = f.game.LeaveGame(playerId)
+					if !bRet {
+						conn.Close()
+					}
+				}else{
+					conn.Close()
+				}
+			}
 		}
 	}
+
+	//release
+	f.game.Close()
 }

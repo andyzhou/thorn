@@ -1,9 +1,12 @@
 package protocol
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"github.com/golang/protobuf/proto"
+)
 
 /*
- * packet face, implement of IPacket
+ * packet data face, implement of IPacket
  */
 
 /*
@@ -17,22 +20,33 @@ const (
 	DataLen      = 2
 	MessageIDLen = 1
 
+
 	MinPacketLen = DataLen + MessageIDLen
 	MaxPacketLen = (2 << 8) * DataLen
 	MaxMessageID = (2 << 8) * MessageIDLen
 )
 
-//face info
+//data info
 type Packet struct {
 	id uint8
 	data []byte
 }
 
 //construct
-func NewPacket() *Packet {
+func NewPacket(
+			id uint8,
+			msg interface{},
+		) *Packet {
 	this := &Packet{
+		id:id,
 		data:make([]byte, 0),
 	}
+
+	switch v := msg.(type) {
+	case []byte:
+		this.data = v
+	}
+
 	return this
 }
 
@@ -51,4 +65,8 @@ func (f *Packet) Serialize() []byte {
 	buff[dataLen] = f.id
 	buff = append(buff, f.data...)
 	return buff
+}
+
+func (f *Packet) UnmarshalPB(msg proto.Message) error {
+	return proto.Unmarshal(f.data, msg)
 }

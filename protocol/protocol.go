@@ -2,8 +2,8 @@ package protocol
 
 import (
 	"encoding/binary"
+	"errors"
 	"github.com/andyzhou/thorn/iface"
-	"github.com/juju/errors"
 	"io"
 )
 
@@ -35,18 +35,18 @@ func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
 		return nil, errors.New("packet data too max")
 	}
 
-	//init message
-	message := NewPacket()
+	//init packet
+	packet := NewPacket()
 
 	//set id
-	message.id = buff[dataLen]
+	packet.id = buff[dataLen]
 
 	//set data
 	if dataLen > 0 {
-		message.data = make([]byte, dataLen, dataLen)
-		if _, err := io.ReadFull(reader, message.data); err != nil {
+		packet.data = make([]byte, dataLen, dataLen)
+		if _, err := io.ReadFull(reader, packet.data); err != nil {
 			return nil, err
 		}
 	}
-	return message, nil
+	return packet, nil
 }

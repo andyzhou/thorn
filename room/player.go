@@ -12,16 +12,17 @@ import (
 //face info
 type Player struct {
 	id uint64
-	idx uint64
+	idx int32
 	isReady bool
 	isOnline bool
+	loadingProgress   int32
 	lastHeartBeatTime int64
 	sendFrameCount uint32
 	client iface.IConn
 }
 
 //construct
-func NewPlayer(id, idx uint64) *Player {
+func NewPlayer(id uint64, idx int32) *Player {
 	//self init
 	this := &Player{
 		id:id,
@@ -43,6 +44,14 @@ func (f *Player) GetConn() iface.IConn {
 	return f.client
 }
 
+func (f *Player) GetId() uint64 {
+	return f.id
+}
+
+func (f *Player) GetIdx() int32 {
+	return f.idx
+}
+
 func (f *Player) Connect(conn iface.IConn) {
 	f.client = conn
 	f.isOnline = true
@@ -52,6 +61,22 @@ func (f *Player) Connect(conn iface.IConn) {
 
 func (f *Player) IsOnline() bool {
 	return f.client != nil && f.isOnline
+}
+
+func (f *Player) IsReady() bool {
+	return f.isReady
+}
+
+func (f *Player) SetReady() {
+	f.isReady = true
+}
+
+func (f *Player) GetProgress() int32 {
+	return f.loadingProgress
+}
+
+func (f *Player) SetProgress(value int32) {
+	f.loadingProgress = value
 }
 
 func (f *Player) RefreshHeartbeatTime() {

@@ -1,6 +1,6 @@
 package room
 
-import "github.com/andyzhou/thorn/iface"
+import "github.com/andyzhou/thorn/pb"
 
 /*
  * frame data face, implement of IFrame
@@ -9,7 +9,7 @@ import "github.com/andyzhou/thorn/iface"
 //face info
 type Frame struct {
 	idx uint32
-	data []iface.IInputData
+	data []*pb.InputData
 }
 
 //construct
@@ -17,16 +17,16 @@ func NewFrame(idx uint32) *Frame {
 	//self init
 	this := &Frame{
 		idx:idx,
-		data:make([]iface.IInputData, 0),
+		data:make([]*pb.InputData, 0),
 	}
 	return this
 }
 
-func (f *Frame) GetData() []iface.IInputData {
+func (f *Frame) GetData() []*pb.InputData {
 	return f.data
 }
 
-func (f *Frame) AddData(data iface.IInputData)bool {
+func (f *Frame) AddData(data *pb.InputData)bool {
 	f.data = append(f.data, data)
 	return true
 }
