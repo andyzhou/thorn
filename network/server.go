@@ -83,6 +83,16 @@ func (f *Server) Start(listener net.Listener) {
 	}
 }
 
+//get protocol
+func (f *Server) GetProtocol() iface.IProtocol {
+	return f.protocol
+}
+
+//get config
+func (f *Server) GetConfig() *Config {
+	return f.config
+}
+
 //////////////////
 //private func
 //////////////////

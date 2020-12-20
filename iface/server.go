@@ -1,6 +1,9 @@
 package iface
 
-import "net"
+import (
+	"github.com/andyzhou/thorn/network"
+	"net"
+)
 
 /*
  * interface of server
@@ -9,4 +12,6 @@ import "net"
 type IServer interface {
 	Stop()
 	Start(listener net.Listener)
+	GetProtocol() IProtocol
+	GetConfig() *network.Config
 }
