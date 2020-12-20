@@ -49,6 +49,7 @@ func (f *Server) Stop() {
 }
 
 //start
+//accept new connection
 func (f *Server) Start(listener net.Listener) {
 	f.listener = listener
 	f.wg.Add(1)

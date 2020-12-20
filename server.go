@@ -22,7 +22,7 @@ type Server struct {
 	manager iface.IManager
 }
 
-//construct
+//construct, step-1
 func NewServer(address string) *Server {
 	//self init
 	this := &Server{
@@ -47,6 +47,44 @@ func (f *Server) Start() {
 		//start
 		f.kcp.Start(room.NewRouter(f.manager), protocol.NewProtocol())
 	}
+}
+
+//start room
+func (f *Server) StartRoom(roomId uint64) bool {
+	//basic check
+	if roomId <= 0 {
+		return false
+	}
+
+	//get room
+	room := f.manager.GetRoom(roomId)
+	if room == nil {
+		return false
+	}
+
+	//start room
+	room.Start()
+	return true
+}
+
+//create room
+func (f *Server) CreateRoom(
+			roomId uint64,
+			players []uint64,
+			randSeed int32,
+		) bool {
+	//basic check
+	if roomId <= 0 || players == nil {
+		return false
+	}
+
+	//init room
+	room := room.NewRoom(roomId, players, randSeed)
+
+	//add into manager
+	bRet := f.manager.AddRoom(room)
+
+	return bRet
 }
 
 ///////////////

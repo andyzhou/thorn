@@ -34,6 +34,8 @@ func (f *Router) OnConnect(conn iface.IConn) bool {
 	return true
 }
 
+
+//room message process
 func (f *Router) OnMessage(
 					conn iface.IConn,
 					packet iface.IPacket,
