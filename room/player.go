@@ -11,7 +11,7 @@ import (
 
 //face info
 type Player struct {
-	id uint64
+	id uint64 //player id
 	idx int32
 	isReady bool
 	isOnline bool

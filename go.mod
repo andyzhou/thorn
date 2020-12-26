@@ -13,4 +13,5 @@ require (
 	github.com/xtaci/kcp-go v5.4.20+incompatible
 	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620 // indirect
 	golang.org/x/net v0.0.0-20201216054612-986b41b23924 // indirect
+	golang.org/x/tools v0.0.0-20201105001634-bc3cf281b174
 )

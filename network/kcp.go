@@ -2,7 +2,9 @@ package network
 
 import (
 	"github.com/andyzhou/thorn/iface"
+	"github.com/andyzhou/thorn/protocol"
 	"github.com/xtaci/kcp-go"
+	"log"
 	"net"
 	"time"
 )
@@ -14,7 +16,7 @@ import (
 //face info
 type KcpServer struct {
 	address string //like ':10086'
-	config *Config
+	config iface.IConfig
 	listener net.Listener
 }
 
@@ -47,7 +49,7 @@ func (f *KcpServer) Start(
 	server := NewServer(f.config, cb, protocol)
 
 	//spawn main process
-	go server.Start(f.listener)
+	server.Start(f.listener)
 }
 
 //////////////////
@@ -61,13 +63,19 @@ func (f *KcpServer) interInit() {
 	if err != nil {
 		panic(err)
 	}
+
 	f.listener = listener
+	log.Printf("KcpServer:init, listen on %s\n", f.address)
+
+	//init chan limit
+	packetChanLimit := uint32(1024)
+	timeOut := time.Second * 5
 
 	//init config
-	f.config = &Config{
-		PacketReceiveChanLimit: 1024,
-		PacketSendChanLimit:    1024,
-		ConnReadTimeout:        time.Second * 5,
-		ConnWriteTimeout:       time.Second * 5,
-	}
+	f.config = protocol.NewConfig(
+			packetChanLimit,
+			packetChanLimit,
+			timeOut,
+			timeOut,
+		)
 }

@@ -1,10 +1,10 @@
 package room
 
 import (
+	"fmt"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
-	"golang.org/x/tools/go/ssa/interp/testdata/src/fmt"
 	"log"
 	"sync/atomic"
 	"time"

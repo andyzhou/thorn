@@ -155,7 +155,9 @@ func (f *Conn) writeLoop() {
 					return
 				}
 				serverConf := f.server.GetConfig()
-				f.conn.SetWriteDeadline(time.Now().Add(serverConf.ConnWriteTimeout))
+				f.conn.SetWriteDeadline(
+							time.Now().Add(serverConf.GetConnWriteTimeout()),
+						)
 				if _, err := f.conn.Write(p.Serialize()); err != nil {
 					return
 				}
@@ -182,7 +184,9 @@ func (f *Conn) readLoop() {
 		}
 		//read packet
 		serverConf := f.server.GetConfig()
-		f.conn.SetReadDeadline(time.Now().Add(serverConf.ConnReadTimeout))
+		f.conn.SetReadDeadline(
+				time.Now().Add(serverConf.GetConnReadTimeout()),
+			)
 		p, err := f.server.GetProtocol().ReadPacket(f.conn)
 		if err != nil {
 			return

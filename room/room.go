@@ -15,7 +15,7 @@ import (
 
 //inter macro define
 const (
-	Frequency = 30
+	Frequency = 30 //frame frequency
 	TickTimer = time.Second / Frequency
 	TimeOut = time.Minute * 5
 	InOutChanSize = 64
@@ -24,11 +24,12 @@ const (
 
 //face info
 type Room struct {
-	id uint64 //room id
+	roomId uint64 //room id
 	secretKey string
 	closeFlag int32
 	timeStamp int64
 	players []uint64
+	cb iface.IRoomCallback //cb for api client
 	inChan chan iface.IConn
 	outChan chan iface.IConn
 	messageChan chan iface.IMessage
@@ -39,13 +40,15 @@ type Room struct {
 
 //construct
 func NewRoom(
-			id uint64,
+			roomId uint64,
 			players []uint64,
 			randomSeed int32,
+			cb iface.IRoomCallback,
 		) *Room {
 	//self init
 	this := &Room{
-		id:id,
+		roomId:roomId,
+		cb:cb,
 		players:make([]uint64, 0),
 		inChan:make(chan iface.IConn, InOutChanSize),
 		outChan:make(chan iface.IConn, InOutChanSize),
@@ -54,22 +57,20 @@ func NewRoom(
 	}
 
 	//init game instance
-	this.game = NewGame(id, players, randomSeed, this)
+	this.game = NewGame(roomId, players, randomSeed, this)
+
+	//spawn main process
+	go this.runMainProcess()
 
 	return this
 }
 
 func (f *Room) Stop() {
-	close(f.closeChan)
-	f.wg.Wait()
-}
-
-func (f *Room) Start() {
-	go f.runMainProcess()
+	f.closeChan <- true
 }
 
 func (f *Room) GetId() uint64 {
-	return f.id
+	return f.roomId
 }
 
 func (f *Room) GetSecretKey() string {
@@ -80,16 +81,20 @@ func (f *Room) GetTimeStamp() int64 {
 	return f.timeStamp
 }
 
+func (f *Room) GetCB() iface.IRoomCallback {
+	return f.cb
+}
+
 func (f *Room) IsOver() bool {
 	return atomic.LoadInt32(&f.closeFlag) != 0
 }
 
-func (f *Room) HasPlayer(id uint64) bool {
-	if id <= 0 || f.players == nil {
+func (f *Room) HasPlayer(playerId uint64) bool {
+	if playerId <= 0 || f.players == nil {
 		return false
 	}
 	for _, v := range f.players {
-		if v == id {
+		if v == playerId {
 			return true
 		}
 	}
@@ -150,16 +155,16 @@ func (f *Room) OnClose(conn iface.IConn) {
 //cb for IGameListener
 //////////////////////
 
-func (f *Room) OnJoinGame(id, playerId uint64) {
-	log.Printf("room %d OnJoinGame %d\n", id, playerId)
+func (f *Room) OnJoinGame(roomId, playerId uint64) {
+	log.Printf("room %d OnJoinGame %d\n", roomId, playerId)
 }
 
-func (f *Room) OnStartGame(id uint64) {
-	log.Printf("room %d OnStartGame\n", id)
+func (f *Room) OnStartGame(roomId uint64) {
+	log.Printf("room %d OnStartGame\n", roomId)
 }
 
-func (f *Room) OnLeaveGame(id, playerId uint64) {
-	log.Printf("room %d OnLeaveGame %d\n", id, playerId)
+func (f *Room) OnLeaveGame(roomId, playerId uint64) {
+	log.Printf("room %d OnLeaveGame %d\n", roomId, playerId)
 }
 
 func (f *Room) OneGameOver(uint64) {
@@ -180,13 +185,17 @@ func (f *Room) runMainProcess() {
 		isOk, bRet bool
 	)
 
-	f.wg.Add(1)
 	defer func() {
 		//clean up
+		f.game.Close()
 		ticker.Stop()
+		close(f.inChan)
+		close(f.outChan)
+		close(f.messageChan)
 		close(f.closeChan)
-		f.wg.Done()
 	}()
+
+	log.Printf("Room %d is running\n", f.roomId)
 
 	//loop
 	for {
@@ -238,7 +247,4 @@ func (f *Room) runMainProcess() {
 			}
 		}
 	}
-
-	//release
-	f.game.Close()
 }

@@ -3,6 +3,7 @@ package network
 import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/xtaci/kcp-go"
+	"log"
 	"net"
 	"sync"
 )
@@ -13,7 +14,7 @@ import (
 
 //face info
 type Server struct {
-	config *Config
+	config iface.IConfig
 	protocol iface.IProtocol
 	cb iface.IConnCallBack
 	listener  net.Listener
@@ -24,7 +25,7 @@ type Server struct {
 
 //construct
 func NewServer(
-			config *Config,
+			config iface.IConfig,
 			cb iface.IConnCallBack,
 			protocol iface.IProtocol,
 		) *Server {
@@ -41,21 +42,42 @@ func NewServer(
 
 //stop
 func (f *Server) Stop() {
-	f.closeOnce.Do(func() {
-			close(f.closeChan)
-			f.listener.Close()
-		})
-	f.wg.Wait()
+	f.closeChan <- true
 }
 
 //start
 //accept new connection
 func (f *Server) Start(listener net.Listener) {
+	//sync listener
 	f.listener = listener
-	f.wg.Add(1)
+
+	//spawn main process
+	go f.runMainProcess()
+}
+
+//get protocol
+func (f *Server) GetProtocol() iface.IProtocol {
+	return f.protocol
+}
+
+//get config
+func (f *Server) GetConfig() iface.IConfig {
+	return f.config
+}
+
+//////////////////
+//private func
+//////////////////
+
+//run main process
+func (f *Server) runMainProcess() {
+	//defer
 	defer func() {
-		f.wg.Done()
+		close(f.closeChan)
+		f.listener.Close()
 	}()
+
+	log.Println("Server start running...")
 
 	//loop
 	for {
@@ -83,20 +105,6 @@ func (f *Server) Start(listener net.Listener) {
 		}()
 	}
 }
-
-//get protocol
-func (f *Server) GetProtocol() iface.IProtocol {
-	return f.protocol
-}
-
-//get config
-func (f *Server) GetConfig() *Config {
-	return f.config
-}
-
-//////////////////
-//private func
-//////////////////
 
 //set udp mode
 func (f *Server) setUdpMode(conn net.Conn) {

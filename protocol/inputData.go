@@ -1,4 +1,4 @@
-package room
+package protocol
 
 /*
  * input data face, implement of IInputData

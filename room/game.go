@@ -16,7 +16,8 @@ import (
 
 //game state
 const (
-	GameReady = iota
+	GameCreated = iota
+	GameReady
 	Gaming
 	GameOver
 	GameStop
@@ -24,11 +25,11 @@ const (
 
 //inter macro define
 const (
-	MaxReadyTime          int64  = 20            //准备阶段最长时间，如果超过这个时间没人连进来直接关闭游戏
-	MaxGameFrame          uint32 = 30*60*3 + 100 //每局最大帧数
-	BroadcastOffsetFrames        = 3             //每隔多少帧广播一次
-	kMaxFrameDataPerMsg          = 60            //每个消息包最多包含多少个帧数据
-	kBadNetworkThreshold         = 2             //这个时间段没有收到心跳包认为他网络很差，不再持续给发包(网络层的读写时间设置的比较长，客户端要求的方案)
+	MaxReadyTime          int64  = 20            //max prepare time, force close if no any login
+	MaxGameFrame          uint32 = 30*60*3 + 100 //max frames per game round
+	BroadcastOffsetFrames        = 3             //cast per frames
+	kMaxFrameDataPerMsg          = 60            //max message packet per frame
+	kBadNetworkThreshold         = 2             //max time for no heart beat
 )
 
 
@@ -38,9 +39,9 @@ type Game struct {
 	startTime int64
 	randSeed int32
 	state int
-	gl iface.IGameListener
+	gl iface.IGameListener //original game listener
 	logic iface.ILockStep
-	players map[uint64]iface.IPlayer
+	players map[uint64]iface.IPlayer //player map
 	frameCount uint32
 	result map[uint64]uint64
 	dirty bool
@@ -48,17 +49,18 @@ type Game struct {
 
 //construct
 func NewGame(
-			id uint64,
+			roomId uint64,
 			players []uint64,
 			randSeed int32,
 			gl iface.IGameListener,
 		) *Game {
 	//self init
 	this := &Game{
-		id:id,
+		id:roomId,
 		randSeed:randSeed,
 		gl:gl,
 		logic:NewLockStep(),
+		state:GameCreated,
 		players:make(map[uint64]iface.IPlayer),
 		result:make(map[uint64]uint64),
 	}
@@ -70,14 +72,14 @@ func NewGame(
 }
 
 //join game
-func (f *Game) JoinGame(id uint64, conn iface.IConn) bool {
+func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 	//basic check
-	if id <= 0 || conn == nil {
+	if playerId <= 0 || conn == nil {
 		return false
 	}
 
 	//check player
-	p, ok := f.players[id]
+	p, ok := f.players[playerId]
 	if !ok {
 		return false
 	}
@@ -89,7 +91,7 @@ func (f *Game) JoinGame(id uint64, conn iface.IConn) bool {
 
 	//check status
 	if f.state != GameReady && f.state != Gaming {
-		log.Printf("[game(%d)] player[%d] game is over\n", f.id, id)
+		log.Printf("[game(%d)] player[%d] game is over\n", f.id, playerId)
 		//reset msg
 		msg.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
 
@@ -102,7 +104,7 @@ func (f *Game) JoinGame(id uint64, conn iface.IConn) bool {
 	if p.GetConn() != nil {
 		//TODO 这里有多线程操作的危险 如果调 p.client.Close() 会把现有刚进来的玩家提调
 		p.GetConn().SetExtraData(nil)
-		log.Printf("[game(%d)] player[%d] replace\n", f.id, id)
+		log.Printf("[game(%d)] player[%d] replace\n", f.id, playerId)
 	}
 
 	//sync conn
@@ -112,20 +114,20 @@ func (f *Game) JoinGame(id uint64, conn iface.IConn) bool {
 	p.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Connect), msg))
 
 	//call cb of game listener
-	f.gl.OnJoinGame(f.id, id)
+	f.gl.OnJoinGame(f.id, playerId)
 
 	return true
 }
 
 //leave game
-func (f *Game) LeaveGame(id uint64) bool {
+func (f *Game) LeaveGame(playerId uint64) bool {
 	//basic check
-	if id <= 0 {
+	if playerId <= 0 {
 		return false
 	}
 
 	//check player
-	p, ok := f.players[id]
+	p, ok := f.players[playerId]
 	if !ok {
 		return false
 	}
@@ -134,20 +136,20 @@ func (f *Game) LeaveGame(id uint64) bool {
 	p.CleanUp()
 
 	//call cb of game listener
-	f.gl.OnLeaveGame(f.id, id)
+	f.gl.OnLeaveGame(f.id, playerId)
 
 	return true
 }
 
 //process message
-func (f *Game) ProcessMessage(id uint64, packet iface.IPacket) bool {
+func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 	//basic check
-	if id <= 0 || packet == nil {
+	if playerId <= 0 || packet == nil {
 		return false
 	}
 
 	//check player
-	player, ok := f.players[id]
+	player, ok := f.players[playerId]
 	if !ok {
 		return false
 	}

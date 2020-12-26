@@ -3,6 +3,7 @@ package room
 import (
 	"github.com/andyzhou/thorn/iface"
 	"sync"
+	"sync/atomic"
 )
 
 /*
@@ -11,6 +12,7 @@ import (
 
 //face info
 type Manager struct {
+	roomCount int32
 	rooms *sync.Map
 }
 
@@ -19,6 +21,7 @@ func NewManager() *Manager {
 	//self init
 	this := &Manager{
 		rooms:new(sync.Map),
+		roomCount:0,
 	}
 	return this
 }
@@ -39,14 +42,19 @@ func (f *Manager) Close() {
 	f.rooms.Range(sf)
 }
 
-//add room
-func (f *Manager) AddRoom(room iface.IRoom) bool {
+//get rooms
+func (f *Manager) GetRooms() int32 {
+	return f.roomCount
+}
+
+//close room
+func (f *Manager) CloseRoom(id uint64) bool {
 	//basic check
-	if room == nil {
+	if id <= 0 || f.rooms == nil {
 		return false
 	}
-	//sync into map
-	f.rooms.Store(room.GetId(), room)
+	f.rooms.Delete(id)
+	atomic.AddInt32(&f.roomCount, -1)
 	return true
 }
 
@@ -67,3 +75,20 @@ func (f *Manager) GetRoom(id uint64) iface.IRoom {
 	}
 	return room
 }
+
+//add room
+func (f *Manager) AddRoom(room iface.IRoom) bool {
+	//basic check
+	if room == nil {
+		return false
+	}
+	//sync into map
+	f.rooms.Store(room.GetId(), room)
+	atomic.AddInt32(&f.roomCount, 1)
+	return true
+}
+
+//////////////
+//private func
+//////////////
+
