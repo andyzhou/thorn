@@ -4,35 +4,40 @@ import (
 	"fmt"
 	"github.com/andyzhou/thorn"
 	"log"
-	"sync"
+	"time"
 )
 
 //inter macro define
 const (
-	UdpAddr = ":6100"
+	UdpServerAddr = "127.0.0.1:6100"
+	Password = "test"
+	Salt = "abc"
 )
 
 func main() {
-	wg := new(sync.WaitGroup)
+	//wg := new(sync.WaitGroup)
 
 	//defer
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("panic happened, err:", err)
-			wg.Done()
 		}
 	}()
 
 	//init
-	server := thorn.NewServer(UdpAddr)
+	server := thorn.NewServer(UdpServerAddr, Password, Salt)
 
 	//set callback
 	server.SetCallback(NewRoomCallBack())
 
+	go createRoom(server)
+
 	//start
 	server.Start()
+}
 
-	wg.Add(1)
+func createRoom(server *thorn.Server) {
+	time.Sleep(time.Second * 2)
 
 	//init room
 	roomId := uint64(1)
@@ -47,9 +52,7 @@ func main() {
 			roomPlayers,
 			1,
 		)
+
 	fmt.Println("xxx")
-
-	wg.Wait()
 }
-
 

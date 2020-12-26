@@ -6,5 +6,7 @@ package iface
 
 type IKcpServer interface {
 	Quit()
-	Start(cb IConnCallBack, protocol IProtocol)
+	GetProtocol() IProtocol
+	GetConfig() IConfig
+	SetConfig(config IConfig) bool
 }

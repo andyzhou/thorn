@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"github.com/andyzhou/thorn/iface"
+	"github.com/xtaci/kcp-go"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -22,8 +23,8 @@ var (
 
 //face info
 type Conn struct {
-	server iface.IServer
-	conn net.Conn //raw connection
+	server iface.IKcpServer
+	conn *kcp.UDPSession //raw connection
 	callback iface.IConnCallBack //cb interface
 	extraData interface{}
 	closeOnce sync.Once
@@ -35,11 +36,11 @@ type Conn struct {
 }
 
 //construct
-func NewConn(conn net.Conn, server iface.IServer) *Conn {
+func NewConn(sess *kcp.UDPSession, server iface.IKcpServer) *Conn {
 	//self init
 	this := &Conn{
 		server:server,
-		conn:conn,
+		conn:sess,
 		closeChan:make(chan bool, 1),
 		wg:new(sync.WaitGroup),
 	}

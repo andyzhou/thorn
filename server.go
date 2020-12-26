@@ -3,11 +3,12 @@ package thorn
 import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/network"
-	"github.com/andyzhou/thorn/protocol"
 	"github.com/andyzhou/thorn/room"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -18,17 +19,28 @@ import (
 //face info
 type Server struct {
 	address string
+	password string
+	salt string
 	cb iface.IRoomCallback //callback for api client
 	kcp iface.IKcpServer
 	manager iface.IManager
+	wg *sync.WaitGroup
+	wgVal int32
 }
 
 //construct, step-1
-func NewServer(address string) *Server {
+func NewServer(
+			address,
+			password,
+			salt string,
+		) *Server {
 	//self init
 	this := &Server{
 		address: address,
+		password:password,
+		salt:salt,
 		manager: room.NewManager(),
+		wg:new(sync.WaitGroup),
 	}
 	//inter init
 	this.interInit()
@@ -44,14 +56,17 @@ func (f *Server) Stop() {
 	if f.kcp != nil {
 		f.kcp.Quit()
 	}
+	f.syncGroupDone()
 }
 
 //start, step-1
 func (f *Server) Start() {
-	if f.kcp != nil {
-		//start
-		f.kcp.Start(room.NewRouter(f.manager), protocol.NewProtocol())
+	if f.wgVal > 0 {
+		return
 	}
+	f.wg.Add(1)
+	atomic.AddInt32(&f.wgVal, 1)
+	f.wg.Wait()
 }
 
 //create room, step-2
@@ -99,13 +114,26 @@ func (f *Server) SetCallback(cb iface.IRoomCallback) bool {
 	return true
 }
 
+//set config
+func (f *Server) SetConfig(config iface.IConfig) bool {
+	return f.kcp.SetConfig(config)
+}
+
 ///////////////
 //private func
 ///////////////
 
+//sync group done
+func (f *Server) syncGroupDone() {
+	if f.wgVal <= 0 {
+		return
+	}
+	atomic.AddInt32(&f.wgVal, -1)
+	f.wg.Done()
+}
+
 //inter init
 func (f *Server) interInit() {
-
 	//init signal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(
@@ -123,6 +151,7 @@ func (f *Server) interInit() {
 			case s, ok := <- sig:
 				if ok {
 					log.Printf("Get signal of %v\n", s.String())
+					f.syncGroupDone()
 					return
 				}
 			}
@@ -130,5 +159,8 @@ func (f *Server) interInit() {
 	}()
 
 	//init kcp server
-	f.kcp = network.NewKcpServer(f.address)
+	f.kcp = network.NewKcpServer(f.address, f.password, f.salt)
+
+	//set wait group value
+	atomic.StoreInt32(&f.wgVal, 0)
 }
