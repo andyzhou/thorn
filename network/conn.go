@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/xtaci/kcp-go"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -12,7 +13,14 @@ import (
 
 /*
  * conn face, implement of IConn
+ * - original udp connect process
+ * - read, write udp data
  */
+
+//inter macro define
+const (
+	ConnPacketChanSize = 1024
+)
 
 // Error type
 var (
@@ -25,7 +33,7 @@ var (
 type Conn struct {
 	server iface.IKcpServer
 	conn *kcp.UDPSession //raw connection
-	callback iface.IConnCallBack //cb interface
+	callback iface.IConnCallBack //cb interface for out side
 	extraData interface{}
 	closeOnce sync.Once
 	closeFlag int32
@@ -36,11 +44,16 @@ type Conn struct {
 }
 
 //construct
-func NewConn(sess *kcp.UDPSession, server iface.IKcpServer) *Conn {
+func NewConn(
+				sess *kcp.UDPSession,
+				server iface.IKcpServer,
+			) *Conn {
 	//self init
 	this := &Conn{
 		server:server,
 		conn:sess,
+		packetSendChan:make(chan iface.IPacket, ConnPacketChanSize),
+		packetReceiveChan:make(chan iface.IPacket, ConnPacketChanSize),
 		closeChan:make(chan bool, 1),
 		wg:new(sync.WaitGroup),
 	}
@@ -66,9 +79,18 @@ func (f *Conn) IsClosed() bool {
 
 //do it
 func (f *Conn) Do() {
-	if !f.callback.OnConnect(f) {
-		return
+	if f.callback != nil {
+		f.callback.OnConnect(f)
 	}
+	if f.server.GetRouter() != nil {
+		f.server.GetRouter().OnConnect(f)
+	}
+
+	//spawn three process
+	//go f.handleLoop()
+	//go f.readLoop()
+	//go f.writeLoop()
+
 	f.asyncDo(f.handleLoop, f.wg)
 	f.asyncDo(f.readLoop, f.wg)
 	f.asyncDo(f.writeLoop, f.wg)
@@ -103,7 +125,8 @@ func (f *Conn) AsyncWritePacket(
 					packet iface.IPacket,
 					timeout time.Duration,
 				) error {
-	if f.IsClosed() {
+	//basic check
+	if packet == nil || f.IsClosed() {
 		return ErrConnClosing
 	}
 
@@ -145,6 +168,7 @@ func (f *Conn) writeLoop() {
 		f.Close()
 	}()
 
+	log.Println("Conn:writeLoop...")
 	//loop
 	for {
 		select {
@@ -159,7 +183,9 @@ func (f *Conn) writeLoop() {
 				f.conn.SetWriteDeadline(
 							time.Now().Add(serverConf.GetConnWriteTimeout()),
 						)
-				if _, err := f.conn.Write(p.Serialize()); err != nil {
+				_, err := f.conn.Write(p.Pack())
+				log.Println("writeLoop, err:", err)
+				if err != nil {
 					return
 				}
 			}
@@ -174,26 +200,30 @@ func (f *Conn) readLoop() {
 		f.Close()
 	}()
 
+	log.Println("Conn:readLoop...")
+
+	//get server config
+	serverConf := f.server.GetConfig()
+	readTimeOut := serverConf.GetConnReadTimeout()
+
 	//loop
 	for {
-		select {
-		case <-f.closeChan:
-			return
-		}
+		//select {
+		//case <-f.closeChan:
+		//	return
+		//}
 		if f.IsClosed() {
 			return
 		}
 		//read packet
-		serverConf := f.server.GetConfig()
-		f.conn.SetReadDeadline(
-				time.Now().Add(serverConf.GetConnReadTimeout()),
-			)
-		p, err := f.server.GetProtocol().ReadPacket(f.conn)
+		f.conn.SetReadDeadline(time.Now().Add(readTimeOut))
+		message, err := f.server.GetProtocol().ReadPacket(f.conn)
+		log.Println("readLoop, err:", err)
 		if err != nil {
 			return
 		}
 		//send to receive chan
-		f.packetReceiveChan <- p
+		f.packetReceiveChan <- message
 	}
 }
 
@@ -204,8 +234,10 @@ func (f *Conn) handleLoop() {
 		f.Close()
 	}()
 
+	log.Println("Conn:handleLoop...")
 	//loop
 	for {
+		log.Println("Conn:handleLoop..")
 		select {
 		case <- f.closeChan:
 			return
@@ -215,12 +247,14 @@ func (f *Conn) handleLoop() {
 					return
 				}
 				//callback
-				if !f.callback.OnMessage(f, p) {
-					return
+				if f.server.GetRouter() != nil {
+					f.server.GetRouter().OnMessage(f, p)
+				}
+				if f.callback != nil {
+					f.callback.OnMessage(f, p)
 				}
 			}
 		}
-
 	}
 }
 

@@ -52,7 +52,6 @@ func createRoom(server *thorn.Server) {
 			roomPlayers,
 			1,
 		)
-
-	fmt.Println("xxx")
+	fmt.Printf("create room %d success\n", roomId)
 }
 

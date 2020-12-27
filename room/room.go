@@ -18,7 +18,7 @@ const (
 	Frequency = 30 //frame frequency
 	TickTimer = time.Second / Frequency
 	TimeOut = time.Minute * 5
-	InOutChanSize = 64
+	InOutChanSize = 128
 	MessageChanSize = 2048
 )
 
@@ -32,7 +32,7 @@ type Room struct {
 	cb iface.IRoomCallback //cb for api client
 	inChan chan iface.IConn
 	outChan chan iface.IConn
-	messageChan chan iface.IMessage
+	packetChan chan iface.IPlayerPacket
 	closeChan chan bool
 	game iface.IGame `game instance`
 	wg sync.WaitGroup
@@ -52,7 +52,7 @@ func NewRoom(
 		players:make([]uint64, 0),
 		inChan:make(chan iface.IConn, InOutChanSize),
 		outChan:make(chan iface.IConn, InOutChanSize),
-		messageChan:make(chan iface.IMessage, MessageChanSize),
+		packetChan:make(chan iface.IPlayerPacket, MessageChanSize),
 		closeChan:make(chan bool, 1),
 	}
 
@@ -136,11 +136,13 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 		}
 	}()
 
-	//init message
-	message := protocol.NewMessage(playerId, packet)
+	//init player packet
+	playerPacket := protocol.NewPlayerPacket()
+	playerPacket.SetId(playerId)
+	playerPacket.SetPacket(packet)
 
 	//send to chan
-	f.messageChan <- message
+	f.packetChan <- playerPacket
 	bRet = true
 	return
 }
@@ -181,7 +183,7 @@ func (f *Room) runMainProcess() {
 		ticker = time.NewTicker(TickTimer)
 		timer = time.NewTimer(TimeOut)
 		conn iface.IConn
-		message iface.IMessage
+		message iface.IPlayerPacket
 		isOk, bRet bool
 	)
 
@@ -191,7 +193,7 @@ func (f *Room) runMainProcess() {
 		ticker.Stop()
 		close(f.inChan)
 		close(f.outChan)
-		close(f.messageChan)
+		close(f.packetChan)
 		close(f.closeChan)
 	}()
 
@@ -215,7 +217,7 @@ func (f *Room) runMainProcess() {
 			//timer out
 			return
 
-		case message, isOk = <- f.messageChan://message
+		case message, isOk = <- f.packetChan://message
 			if isOk {
 				f.game.ProcessMessage(message.GetId(), message.GetPacket())
 			}

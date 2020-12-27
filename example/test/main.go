@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/crypto/pbkdf2"
-	"io"
 	"log"
 	"sync"
 	"time"
@@ -79,15 +78,15 @@ func client() {
 		log.Print("client created, session:", sess.RemoteAddr())
 		for {
 			data := time.Now().String()
-			buf := make([]byte, len(data))
+			//buf := make([]byte, len(data))
 			log.Println("sent:", data)
 			if _, err := sess.Write([]byte(data)); err == nil {
 				// read back the data
-				if _, err := io.ReadFull(sess, buf); err == nil {
-					log.Println("recv:", string(buf))
-				} else {
-					log.Fatal(err)
-				}
+				//if _, err := io.ReadFull(sess, buf); err == nil {
+				//	log.Println("recv:", string(buf))
+				//} else {
+				//	log.Fatal(err)
+				//}
 			} else {
 				log.Fatal(err)
 			}

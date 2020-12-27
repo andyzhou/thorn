@@ -1,10 +1,10 @@
 package protocol
 
 import (
-	"encoding/binary"
 	"errors"
 	"github.com/andyzhou/thorn/iface"
 	"io"
+	"log"
 )
 
 /*
@@ -25,29 +25,39 @@ func NewProtocol() *Protocol {
 
 //read packet
 func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
-	//try read data
-	buff := make([]byte, MinPacketLen, MinPacketLen)
-	_, err := io.ReadFull(reader, buff)
+	//init header
+	header := make([]byte, PacketHeadSize)
+
+	//read header
+	_, err := io.ReadFull(reader, header)
 	if err != nil {
 		return nil, err
 	}
-	dataLen := binary.BigEndian.Uint16(buff)
-	if dataLen > MaxPacketLen {
-		return nil, errors.New("packet data too max")
+
+	//unpack header
+	packet := NewPacket()
+	message, err := packet.UnPackHead(header)
+	if err != nil {
+		return nil, err
 	}
 
-	//init packet
-	packet := &Packet{}
-
-	//set id
-	packet.id = buff[dataLen]
-
-	//set data
-	if dataLen > 0 {
-		packet.data = make([]byte, dataLen, dataLen)
-		if _, err := io.ReadFull(reader, packet.data); err != nil {
-			return nil, err
-		}
+	//read real data and storage into message object
+	if message.GetLen() <= 0 {
+		return nil, errors.New("message len is zero")
 	}
+
+	data := make([]byte, message.GetLen())
+	_, err = io.ReadFull(reader, data)
+	if err != nil {
+		log.Println("read data failed, err:", err.Error())
+		return nil, err
+	}
+
+	//set packet message id
+	packet.id = message.GetId()
+
+	//set packet message
+	packet.data = data
+
 	return packet, nil
 }

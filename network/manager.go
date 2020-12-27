@@ -1,4 +1,4 @@
-package room
+package network
 
 import (
 	"github.com/andyzhou/thorn/iface"

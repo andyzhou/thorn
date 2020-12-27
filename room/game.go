@@ -96,7 +96,7 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 		msg.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
 
 		//notify client
-		p.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Connect), msg))
+		p.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), msg))
 		return false
 	}
 
@@ -111,7 +111,7 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 	p.Connect(conn)
 
 	//send message
-	p.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Connect), msg))
+	p.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), msg))
 
 	//call cb of game listener
 	f.gl.OnJoinGame(f.id, playerId)
@@ -155,10 +155,10 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 	}
 
 	log.Printf("[game(%d)] processMsg player[%d] msg=[%d]\n",
-				f.id, player.GetId(), packet.GetMessageId())
+				f.id, player.GetId(), packet.GetId())
 
 	//get message id
-	messageId := pb.ID(packet.GetMessageId())
+	messageId := pb.ID(packet.GetId())
 
 	//do relate opt by message id
 	switch messageId {
@@ -178,7 +178,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			}
 
 			//notify player
-			player.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_JoinRoom), msg))
+			player.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_JoinRoom), msg))
 		}
 	case pb.ID_MSG_Progress://progress
 		{
@@ -190,12 +190,12 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			msg := &pb.C2S_ProgressMsg{}
 			if err := packet.UnmarshalPB(msg); err != nil {
 				log.Printf("[game(%d)] processMsg player[%d] msg=[%d] UnmarshalPB error:[%s]\n",
-						f.id, player.GetId(), packet.GetMessageId(), err.Error())
+						f.id, player.GetId(), packet.GetId(), err.Error())
 				return false
 			}
 			//set player progress
 			player.SetProgress(msg.GetPro())
-			packet := protocol.NewPacket(uint8(pb.ID_MSG_Progress),
+			packet := protocol.NewPacketWithPara(uint32(pb.ID_MSG_Progress),
 						&pb.S2C_ProgressMsg{
 							Id:proto.Uint64(player.GetId()),
 							Pro:msg.Pro,
@@ -206,7 +206,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 
 	case pb.ID_MSG_Heartbeat://heart beat
 		{
-			player.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Heartbeat), nil))
+			player.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Heartbeat), nil))
 			player.RefreshHeartbeatTime()
 		}
 
@@ -229,13 +229,13 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			msg := &pb.C2S_InputMsg{}
 			if err := packet.UnmarshalPB(msg); nil != err {
 				fmt.Printf("[game(%d)] processMsg player[%d] msg=[%d] UnmarshalPB error:[%s]\n",
-							f.id, player.GetId(), packet.GetMessageId(), err.Error())
+							f.id, player.GetId(), packet.GetId(), err.Error())
 				return false
 			}
 			//push input
 			if !f.pushInput(player, msg) {
 				log.Printf("[game(%d)] processMsg player[%d] msg=[%d] pushInput failed\n",
-							f.id, player.GetId(), packet.GetMessageId())
+							f.id, player.GetId(), packet.GetId())
 				break
 			}
 
@@ -248,7 +248,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			msg := &pb.C2S_ResultMsg{}
 			if err := packet.UnmarshalPB(msg); nil != err {
 				log.Printf("[game(%d)] processMsg player[%d] msg=[%d] UnmarshalPB error:[%s]\n",
-							f.id, player.GetId(), packet.GetMessageId(), err.Error())
+							f.id, player.GetId(), packet.GetId(), err.Error())
 				return false
 			}
 
@@ -256,7 +256,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			f.result[player.GetId()] = msg.GetWinnerID()
 			log.Printf("[game(%d)] ID_MSG_Result player[%d] winner=[%d]\n",
 						f.id, player.GetId(), msg.GetWinnerID())
-			player.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Result), nil))
+			player.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Result), nil))
 		}
 	default:
 		{
@@ -335,7 +335,7 @@ func (f *Game) GetResult() map[uint64]uint64 {
 
 //close game
 func (f *Game) Close() {
-	packet := protocol.NewPacket(uint8(pb.ID_MSG_Close), nil)
+	packet := protocol.NewPacketWithPara(uint32(pb.ID_MSG_Close), nil)
 	f.broadcast(packet)
 }
 
@@ -361,7 +361,7 @@ func (f *Game) doReady(p iface.IPlayer) {
 	p.SetReady()
 
 	//init message
-	packet := protocol.NewPacket(uint8(pb.ID_MSG_Ready), nil)
+	packet := protocol.NewPacketWithPara(uint32(pb.ID_MSG_Ready), nil)
 	p.SendMessage(packet)
 }
 
@@ -393,7 +393,7 @@ func (f *Game) doStart() {
 	msg := &pb.S2C_StartMsg{
 		TimeStamp:proto.Int64(f.startTime),
 	}
-	packet := protocol.NewPacket(uint8(pb.ID_MSG_Start), msg)
+	packet := protocol.NewPacketWithPara(uint32(pb.ID_MSG_Start), msg)
 
 	//broad cast to all
 	f.broadcast(packet)
@@ -426,7 +426,7 @@ func (f *Game) doReconnect(p iface.IPlayer) bool {
 	msg := &pb.S2C_StartMsg{
 		TimeStamp:proto.Int64(f.startTime),
 	}
-	packet := protocol.NewPacket(uint8(pb.ID_MSG_Start), msg)
+	packet := protocol.NewPacketWithPara(uint32(pb.ID_MSG_Start), msg)
 
 	//send message
 	p.SendMessage(packet)
@@ -454,7 +454,7 @@ func (f *Game) doReconnect(p iface.IPlayer) bool {
 		c++
 
 		if c >= kMaxFrameDataPerMsg || i == (framesCount - 1) {
-			p.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Frame), frameMsg))
+			p.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Frame), frameMsg))
 			c = 0
 			frameMsg = &pb.S2C_FrameMsg{}
 		}
@@ -517,7 +517,7 @@ func (f *Game) broadcastFrameData() {
 
 			//if last frame or up to max frame, send them
 			if i == (frameCount - 1) || c >= kMaxFrameDataPerMsg {
-				p.SendMessage(protocol.NewPacket(uint8(pb.ID_MSG_Frame), msg))
+				p.SendMessage(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Frame), msg))
 				c = 0
 				msg = &pb.S2C_FrameMsg{}
 			}

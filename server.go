@@ -23,7 +23,6 @@ type Server struct {
 	salt string
 	cb iface.IRoomCallback //callback for api client
 	kcp iface.IKcpServer
-	manager iface.IManager
 	wg *sync.WaitGroup
 	wgVal int32
 }
@@ -36,11 +35,10 @@ func NewServer(
 		) *Server {
 	//self init
 	this := &Server{
-		address: address,
-		password:password,
-		salt:salt,
-		manager: room.NewManager(),
-		wg:new(sync.WaitGroup),
+		address:  address,
+		password: password,
+		salt:     salt,
+		wg:       new(sync.WaitGroup),
 	}
 	//inter init
 	this.interInit()
@@ -84,7 +82,7 @@ func (f *Server) CreateRoom(
 	room := room.NewRoom(roomId, players, randSeed, f.cb)
 
 	//add into manager
-	bRet := f.manager.AddRoom(room)
+	bRet := f.kcp.GetManager().AddRoom(room)
 
 	return bRet
 }
@@ -97,7 +95,7 @@ func (f *Server) StartRoom(roomId uint64) bool {
 	}
 
 	//get room
-	room := f.manager.GetRoom(roomId)
+	room := f.kcp.GetManager().GetRoom(roomId)
 	if room == nil {
 		return false
 	}
@@ -109,6 +107,10 @@ func (f *Server) StartRoom(roomId uint64) bool {
 func (f *Server) SetCallback(cb iface.IRoomCallback) bool {
 	if cb == nil {
 		return false
+	}
+	if f.kcp != nil {
+		//set call back
+		f.kcp.SetCallback(cb)
 	}
 	f.cb = cb
 	return true

@@ -19,9 +19,12 @@ type KcpServer struct {
 	address string //like ':10086'
 	password string
 	salt string
+	cb iface.IRoomCallback
+	router iface.IConnCallBack
 	protocol iface.IProtocol
 	config iface.IConfig
 	listener *kcp.Listener
+	manager iface.IManager
 }
 
 //construct
@@ -30,6 +33,9 @@ func NewKcpServer(
 			password,
 			salt string,
 		) *KcpServer {
+	//init manager
+	manager := NewManager()
+
 	//self init
 	this := &KcpServer{
 		address:address,
@@ -37,6 +43,8 @@ func NewKcpServer(
 		salt:salt,
 		protocol:protocol.NewProtocol(),
 		listener:new(kcp.Listener),
+		manager:manager,
+		router:NewRouter(manager),
 	}
 
 	//inter init
@@ -54,6 +62,16 @@ func (f *KcpServer) Quit() {
 	f.listener = nil
 }
 
+//get router
+func (f *KcpServer) GetRouter() iface.IConnCallBack {
+	return f.router
+}
+
+//get manager
+func (f *KcpServer) GetManager() iface.IManager {
+	return f.manager
+}
+
 //get protocol
 func (f *KcpServer) GetProtocol() iface.IProtocol {
 	return f.protocol
@@ -62,6 +80,15 @@ func (f *KcpServer) GetProtocol() iface.IProtocol {
 //get config
 func (f *KcpServer) GetConfig() iface.IConfig {
 	return f.config
+}
+
+//set room callback
+func (f *KcpServer) SetCallback(cb iface.IRoomCallback) bool {
+	if cb == nil {
+		return false
+	}
+	f.cb = cb
+	return true
 }
 
 //set config
@@ -83,6 +110,7 @@ func (f *KcpServer) runMainProcess() {
 		return
 	}
 	log.Println("KcpServer:runMainProcess wait connect..")
+
 	//loop
 	for {
 		//accept new connect
@@ -91,15 +119,17 @@ func (f *KcpServer) runMainProcess() {
 			log.Println("Server accept failed, err:", err)
 			continue
 		}
+		log.Println("conn sess:", sess.RemoteAddr())
 
 		//set upd mode
 		f.setUdpMode(sess)
 
 		//new udp connect
-		//conn := NewConn(sess, f)
-		//conn.Do()
-
-		log.Println("conn sess:", sess.RemoteAddr())
+		conn := NewConn(sess, f)
+		if f.cb != nil {
+			conn.SetCallBack(f.cb)
+		}
+		conn.Do()
 	}
 }
 
@@ -127,14 +157,13 @@ func (f *KcpServer) interInit() {
 		return
 	}
 
-	//init kcp listener
+	//init kcp listener, udp protocol
 	f.listener, err = kcp.ListenWithOptions(f.address, block, 10, 3)
 	if err != nil {
 		panic(err)
 		return
 	}
-
-	log.Printf("KcpServer:init, listen on %s\n", f.address)
+	log.Println("KcpServer:init, listen on ", f.address)
 
 	//init chan limit
 	packetChanLimit := uint32(1024)
