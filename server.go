@@ -57,7 +57,7 @@ func (f *Server) Stop() {
 	f.syncGroupDone()
 }
 
-//start, step-1
+//start, step-2
 func (f *Server) Start() {
 	if f.wgVal > 0 {
 		return
@@ -67,7 +67,7 @@ func (f *Server) Start() {
 	f.wg.Wait()
 }
 
-//create room, step-2
+//create room, step-3
 func (f *Server) CreateRoom(
 			roomId uint64,
 			players []uint64,
@@ -87,7 +87,7 @@ func (f *Server) CreateRoom(
 	return bRet
 }
 
-//start room, step-3
+//start room, step-4
 func (f *Server) StartRoom(roomId uint64) bool {
 	//basic check
 	if roomId <= 0 {
