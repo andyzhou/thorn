@@ -25,6 +25,7 @@ type KcpServer struct {
 	config iface.IConfig
 	listener *kcp.Listener
 	manager iface.IManager
+	needQuit bool
 }
 
 //construct
@@ -58,6 +59,7 @@ func NewKcpServer(
 
 //stop
 func (f *KcpServer) Quit() {
+	f.needQuit = true
 	f.listener.Close()
 	f.listener = nil
 }
@@ -113,6 +115,9 @@ func (f *KcpServer) runMainProcess() {
 
 	//loop
 	for {
+		if f.needQuit {
+			break
+		}
 		//accept new connect
 		sess, err := f.listener.AcceptKCP()
 		if err != nil {
@@ -124,12 +129,34 @@ func (f *KcpServer) runMainProcess() {
 		//set upd mode
 		f.setUdpMode(sess)
 
+		//simple testing
+		//go f.handleEcho(sess)
+
 		//new udp connect
 		conn := NewConn(sess, f)
 		if f.cb != nil {
 			conn.SetCallBack(f.cb)
 		}
 		conn.Do()
+	}
+}
+
+//test read
+func (f *KcpServer) handleEcho(conn *kcp.UDPSession) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println("handleEcho, read buf:", string(buf))
+
+		n, err = conn.Write(buf[:n])
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 }
 

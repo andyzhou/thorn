@@ -19,6 +19,7 @@ const (
 func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
+	//go server()
 	time.AfterFunc(time.Second * 2, client)
 	//server()
 	wg.Wait()
@@ -57,6 +58,7 @@ func handleEcho(conn *kcp.UDPSession) {
 			log.Println(err)
 			return
 		}
+		log.Println("handleEcho, read buf:", string(buf))
 
 		n, err = conn.Write(buf[:n])
 		if err != nil {
@@ -79,8 +81,8 @@ func client() {
 		for {
 			data := time.Now().String()
 			//buf := make([]byte, len(data))
-			log.Println("sent:", data)
 			if _, err := sess.Write([]byte(data)); err == nil {
+				log.Println("sent:", data)
 				// read back the data
 				//if _, err := io.ReadFull(sess, buf); err == nil {
 				//	log.Println("recv:", string(buf))

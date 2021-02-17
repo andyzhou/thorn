@@ -1,7 +1,7 @@
 package network
 
 import (
-	"errors"
+	"github.com/andyzhou/thorn/define"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/xtaci/kcp-go"
 	"log"
@@ -20,13 +20,6 @@ import (
 //inter macro define
 const (
 	ConnPacketChanSize = 1024
-)
-
-// Error type
-var (
-	ErrConnClosing   = errors.New("use of closed network connection")
-	ErrWriteBlocking = errors.New("write packet was blocking")
-	ErrReadBlocking  = errors.New("read packet was blocking")
 )
 
 //face info
@@ -87,10 +80,6 @@ func (f *Conn) Do() {
 	}
 
 	//spawn three process
-	//go f.handleLoop()
-	//go f.readLoop()
-	//go f.writeLoop()
-
 	f.asyncDo(f.handleLoop, f.wg)
 	f.asyncDo(f.readLoop, f.wg)
 	f.asyncDo(f.writeLoop, f.wg)
@@ -127,12 +116,12 @@ func (f *Conn) AsyncWritePacket(
 				) error {
 	//basic check
 	if packet == nil || f.IsClosed() {
-		return ErrConnClosing
+		return define.ErrConnClosing
 	}
 
 	defer func() {
 		if err := recover(); err != nil {
-			err = ErrConnClosing
+			err = define.ErrConnClosing
 		}
 	}()
 
@@ -141,16 +130,16 @@ func (f *Conn) AsyncWritePacket(
 		case f.packetSendChan <- packet:
 			return nil
 		default:
-			return ErrWriteBlocking
+			return define.ErrWriteBlocking
 		}
 	}else{
 		select {
 		case f.packetSendChan <- packet:
 			return nil
 		case <- f.closeChan:
-			return ErrConnClosing
+			return define.ErrConnClosing
 		case <- time.After(timeout):
-			return ErrWriteBlocking
+			return define.ErrWriteBlocking
 		}
 	}
 
@@ -179,10 +168,10 @@ func (f *Conn) writeLoop() {
 				if f.IsClosed() {
 					return
 				}
-				serverConf := f.server.GetConfig()
-				f.conn.SetWriteDeadline(
-							time.Now().Add(serverConf.GetConnWriteTimeout()),
-						)
+				//serverConf := f.server.GetConfig()
+				//f.conn.SetWriteDeadline(
+				//			time.Now().Add(serverConf.GetConnWriteTimeout()),
+				//		)
 				_, err := f.conn.Write(p.Pack())
 				log.Println("writeLoop, err:", err)
 				if err != nil {
@@ -203,24 +192,20 @@ func (f *Conn) readLoop() {
 	log.Println("Conn:readLoop...")
 
 	//get server config
-	serverConf := f.server.GetConfig()
-	readTimeOut := serverConf.GetConnReadTimeout()
+	//serverConf := f.server.GetConfig()
+	//readTimeOut := serverConf.GetConnReadTimeout()
 
 	//loop
 	for {
-		//select {
-		//case <-f.closeChan:
-		//	return
-		//}
 		if f.IsClosed() {
 			return
 		}
 		//read packet
-		f.conn.SetReadDeadline(time.Now().Add(readTimeOut))
+		//f.conn.SetReadDeadline(time.Now().Add(readTimeOut))
 		message, err := f.server.GetProtocol().ReadPacket(f.conn)
 		log.Println("readLoop, err:", err)
 		if err != nil {
-			return
+			continue
 		}
 		//send to receive chan
 		f.packetReceiveChan <- message

@@ -8,6 +8,7 @@ import (
 
 /*
  * manager face, implement of IManager
+ * - dynamic room manager
  */
 
 //face info

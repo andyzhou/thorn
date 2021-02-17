@@ -78,7 +78,7 @@ func genConnRoomPacket(roomId, playerId uint64) *protocol.Packet {
 		BattleID:proto.Uint64(roomId),
 		PlayerID:proto.Uint64(playerId),
 	}
-	packet := protocol.NewPacket(uint8(pb.ID_MSG_Connect), msg)
+	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg)
 	return packet
 }
 

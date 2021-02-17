@@ -30,7 +30,7 @@ func main() {
 	//set callback
 	server.SetCallback(NewRoomCallBack())
 
-	go createRoom(server)
+	//go createRoom(server)
 
 	//start
 	server.Start()

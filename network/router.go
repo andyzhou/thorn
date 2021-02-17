@@ -12,6 +12,7 @@ import (
 
 /*
  * room router face, implement of IConnCallBack
+ * - router for udp protocol
  */
 
 //face info
