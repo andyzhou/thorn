@@ -54,7 +54,6 @@ message S2C_JoinRoomMsg  {
 //服务端广播开始游戏消息
 message S2C_StartMsg  {
 	optional int64 timeStamp        = 1;   //同步时间戳
-
 }
 
 //读条进度

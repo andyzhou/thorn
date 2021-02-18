@@ -195,8 +195,8 @@ func (f *Conn) writeLoop() {
 				//write packet
 				//f.conn.SetWriteDeadline(time.Now().Add(writeTimeOut))
 				_, err := f.conn.Write(p.Pack())
-				log.Println("writeLoop, err:", err)
 				if err != nil {
+					log.Println("Conn:writeLoop, err:", err)
 					return
 				}
 				f.activeTime = time.Now().Unix()
@@ -229,8 +229,8 @@ func (f *Conn) readLoop() {
 		//read packet
 		//f.conn.SetReadDeadline(time.Now().Add(readTimeOut))
 		message, err := f.server.GetProtocol().ReadPacket(f.conn)
-		log.Println("readLoop, err:", err)
 		if err != nil {
+			log.Println("Conn:readLoop, err:", err)
 			continue
 		}
 		//send to receive chan

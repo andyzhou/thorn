@@ -99,6 +99,10 @@ func NewPacketWithPara(
 			log.Println("NewPacketWithPara failed, err:", err)
 			return nil
 		}
+	case nil:
+		{
+			//do nothing
+		}
 	default:
 		log.Println("NewPacketWithPara error type:", id)
 		return nil
@@ -110,7 +114,7 @@ func NewPacketWithPara(
 //pack data
 func (f *Packet) Pack() []byte {
 	//basic check
-	if f.id < 0 || f.data == nil {
+	if f.id < 0 {
 		return nil
 	}
 

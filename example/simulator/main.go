@@ -84,6 +84,11 @@ func genConnRoomPacket(roomId, playerId uint64, token string) *protocol.Packet {
 	return packet
 }
 
+//gen join room packet
+func genJoinRoomPacket() *protocol.Packet {
+	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_JoinRoom), nil)
+	return packet
+}
 
 //gen room progress packet
 func genRoomProgressPacket(progress int32) *protocol.Packet {
@@ -91,6 +96,12 @@ func genRoomProgressPacket(progress int32) *protocol.Packet {
 		Pro:&progress,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Progress), msg)
+	return packet
+}
+
+//gen heart beat packet
+func genHeartBeatPacket() *protocol.Packet {
+	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Heartbeat), nil)
 	return packet
 }
 
@@ -110,8 +121,20 @@ func runMainProcess(sess *kcp.UDPSession) {
 		writePacket(sess, packet)
 	}
 
+	//send join room packet
+	packet = genJoinRoomPacket()
+	if packet != nil {
+		writePacket(sess, packet)
+	}
+
 	//loop
 	for {
+		//gen heart beat packet
+		packet = genHeartBeatPacket()
+		if packet != nil {
+			writePacket(sess, packet)
+		}
+
 		//gen progress packet
 		packet = genRoomProgressPacket(progress)
 		if packet != nil {

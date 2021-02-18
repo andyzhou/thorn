@@ -262,7 +262,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 		}
 	default:
 		{
-			log.Printf("[game(%d)] processMsg unknown message id[%d]\n", int32(messageId))
+			log.Printf("[game(%d)] processMsg unknown message id[%d]\n", f.id, int32(messageId))
 		}
 	}
 

@@ -112,7 +112,7 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 
 //cb for OnMessage
 func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
-	log.Println("Room:OnMessage")
+	log.Println("Room:OnMessage, message id:", packet.GetMessageId())
 	//try get player id from extra data
 	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {

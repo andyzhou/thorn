@@ -44,7 +44,7 @@ func (f *Router) OnMessage(
 				) bool {
 	//get message id
 	messageId := pb.ID(packet.GetMessageId())
-	log.Println("Router:OnMessage, id:", messageId)
+	log.Println("Router:OnMessage, messageId:", messageId)
 
 	switch messageId {
 	case pb.ID_MSG_Connect://connect
