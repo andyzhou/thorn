@@ -18,7 +18,7 @@ const (
 	Frequency = 30 //frame frequency
 	TickTimer = time.Second / Frequency
 	TimeOut = time.Minute * 5
-	InOutChanSize = 128
+	InOutChanSize = 1024
 	MessageChanSize = 2048
 )
 
@@ -113,7 +113,7 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 //cb for OnMessage
 func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 	log.Println("Room:OnMessage")
-	//try get data
+	//try get player id from extra data
 	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {
 		bRet = false
@@ -161,7 +161,8 @@ func (f *Room) OnLeaveGame(roomId, playerId uint64) {
 	log.Printf("room %d OnLeaveGame %d\n", roomId, playerId)
 }
 
-func (f *Room) OneGameOver(uint64) {
+func (f *Room) OneGameOver(roomId uint64) {
+	log.Printf("room %d OneGameOver\n", roomId)
 	atomic.StoreInt32(&f.closeFlag, 1)
 }
 

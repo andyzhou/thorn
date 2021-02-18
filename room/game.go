@@ -7,6 +7,7 @@ import (
 	"github.com/andyzhou/thorn/protocol"
 	"github.com/golang/protobuf/proto"
 	"log"
+	"reflect"
 	"time"
 )
 
@@ -34,7 +35,7 @@ const (
 
 //face info
 type Game struct {
-	id uint64
+	id uint64 //room id
 	startTime int64
 	randSeed int32
 	state int
@@ -70,10 +71,10 @@ func NewGame(
 	return this
 }
 
-//join game
+//player join game
 func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 	//basic check
-	if playerId <= 0 || conn == nil {
+	if playerId <= 0 || conn == nil || reflect.ValueOf(conn).IsNil() {
 		return false
 	}
 
@@ -109,10 +110,11 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 	//sync conn
 	p.Connect(conn)
 
-	//send message
+	//send message to player
 	p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
 
 	//call cb of game listener
+	//this is the callback of room face
 	f.gl.OnJoinGame(f.id, playerId)
 
 	return true
@@ -135,6 +137,7 @@ func (f *Game) LeaveGame(playerId uint64) bool {
 	p.CleanUp()
 
 	//call cb of game listener
+	//this is the callback of room face
 	f.gl.OnLeaveGame(f.id, playerId)
 
 	return true

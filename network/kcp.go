@@ -2,11 +2,13 @@ package network
 
 import (
 	"crypto/sha1"
+	"github.com/andyzhou/thorn/define"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/protocol"
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/crypto/pbkdf2"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -26,6 +28,7 @@ type KcpServer struct {
 	listener *kcp.Listener
 	manager iface.IManager
 	needQuit bool
+	sync.RWMutex
 }
 
 //construct
@@ -59,6 +62,8 @@ func NewKcpServer(
 
 //stop
 func (f *KcpServer) Quit() {
+	f.Lock()
+	defer f.Unlock()
 	f.needQuit = true
 	f.listener.Close()
 	f.listener = nil
@@ -138,25 +143,6 @@ func (f *KcpServer) runMainProcess() {
 	}
 }
 
-//test read
-func (f *KcpServer) handleEcho(conn *kcp.UDPSession) {
-	buf := make([]byte, 4096)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		log.Println("handleEcho, read buf:", string(buf))
-
-		n, err = conn.Write(buf[:n])
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
-}
-
 //set udp mode
 func (f *KcpServer) setUdpMode(session *kcp.UDPSession) bool {
 	if session == nil {
@@ -190,8 +176,8 @@ func (f *KcpServer) interInit() {
 	log.Println("KcpServer:init, listen on ", f.address)
 
 	//init chan limit
-	packetChanLimit := uint32(1024)
-	timeOut := time.Second * 5
+	packetChanLimit := uint32(define.DefaultChanSize)
+	timeOut := time.Second * define.DefaultTimeOut
 
 	//init default config
 	f.config = protocol.NewConfig(

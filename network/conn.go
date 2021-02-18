@@ -6,6 +6,7 @@ import (
 	"github.com/xtaci/kcp-go"
 	"log"
 	"net"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +31,7 @@ type Conn struct {
 	extraData interface{}
 	closeOnce sync.Once
 	closeFlag int32
+	activeTime int64
 	packetSendChan chan iface.IPacket
 	packetReceiveChan chan iface.IPacket
 	closeChan chan bool
@@ -38,13 +40,14 @@ type Conn struct {
 
 //construct
 func NewConn(
-				sess *kcp.UDPSession,
-				server iface.IKcpServer,
-			) *Conn {
+			sess *kcp.UDPSession,
+			server iface.IKcpServer,
+		) *Conn {
 	//self init
 	this := &Conn{
 		server:server,
 		conn:sess,
+		activeTime:time.Now().Unix(),
 		packetSendChan:make(chan iface.IPacket, ConnPacketChanSize),
 		packetReceiveChan:make(chan iface.IPacket, ConnPacketChanSize),
 		closeChan:make(chan bool, 1),
@@ -72,18 +75,22 @@ func (f *Conn) IsClosed() bool {
 
 //do it
 func (f *Conn) Do() {
-	if f.callback != nil {
+	//check callback
+	if f.callback != nil && !reflect.ValueOf(f.callback).IsNil() {
 		if !f.callback.OnConnect(f) {
 			return
 		}
 	}
-	if f.server.GetRouter() != nil {
+
+	//check router
+	router := f.server.GetRouter()
+	if router != nil && !reflect.ValueOf(router).IsNil() {
 		if !f.server.GetRouter().OnConnect(f) {
 			return
 		}
 	}
 
-	//spawn three process
+	//async do three process
 	f.asyncDo(f.handleLoop, f.wg)
 	f.asyncDo(f.readLoop, f.wg)
 	f.asyncDo(f.writeLoop, f.wg)
@@ -101,6 +108,11 @@ func (f *Conn) SetExtraData(data interface{}) bool {
 	}
 	f.extraData = data
 	return true
+}
+
+//get last active time
+func (f *Conn) GetActiveTime() int64 {
+	return f.activeTime
 }
 
 //get raw connect
@@ -157,11 +169,18 @@ func (f *Conn) AsyncWritePacket(
 //write loop
 func (f *Conn) writeLoop() {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			log.Println("Conn:writeLoop panic, err:", err)
+		}
 		f.Close()
 	}()
 
 	log.Println("Conn:writeLoop...")
+
+	//get server config
+	//serverConf := f.server.GetConfig()
+	//writeTimeOut := serverConf.GetConnWriteTimeout()
+
 	//loop
 	for {
 		select {
@@ -173,15 +192,14 @@ func (f *Conn) writeLoop() {
 				if f.IsClosed() {
 					return
 				}
-				//serverConf := f.server.GetConfig()
-				//f.conn.SetWriteDeadline(
-				//			time.Now().Add(serverConf.GetConnWriteTimeout()),
-				//		)
+				//write packet
+				//f.conn.SetWriteDeadline(time.Now().Add(writeTimeOut))
 				_, err := f.conn.Write(p.Pack())
 				log.Println("writeLoop, err:", err)
 				if err != nil {
 					return
 				}
+				f.activeTime = time.Now().Unix()
 			}
 		}
 	}
@@ -190,7 +208,9 @@ func (f *Conn) writeLoop() {
 //read loop
 func (f *Conn) readLoop() {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			log.Println("Conn:readLoop panic, err:", err)
+		}
 		f.Close()
 	}()
 
@@ -221,7 +241,9 @@ func (f *Conn) readLoop() {
 //handle loop
 func (f *Conn) handleLoop() {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			log.Println("Conn:handleLoop panic, err:", err)
+		}
 		f.Close()
 	}()
 
@@ -244,6 +266,7 @@ func (f *Conn) handleLoop() {
 				if f.callback != nil {
 					f.callback.OnMessage(f, p)
 				}
+				f.activeTime = time.Now().Unix()
 			}
 		}
 	}

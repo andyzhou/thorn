@@ -20,7 +20,7 @@ const (
 //face info
 type Manager struct {
 	roomCount int32
-	rooms *sync.Map
+	rooms *sync.Map //running room map
 	closeChan chan bool
 }
 

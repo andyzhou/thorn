@@ -21,6 +21,7 @@ type IConn interface {
 	IsClosed() bool
 	Do()
 	AsyncWritePacket(packet IPacket, duration time.Duration) error
+	GetActiveTime() int64
 	GetRawConn() net.Conn
 	GetExtraData() interface{}
 	SetExtraData(data interface{}) bool

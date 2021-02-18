@@ -8,6 +8,7 @@ import (
 
 /*
  * lock step data face, implement of ILockStep
+ * - frame data opt
  */
 
 //face info

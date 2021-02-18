@@ -23,7 +23,7 @@ enum ID {
 }
 
 //错误码
-enum ERRORCODE {
+enum ERROR_CODE {
     ERR_Ok          = 0;    //OK
     ERR_NoPlayer    = 1;    //没有这个玩家
     ERR_NoRoom      = 2;    //没有房间
@@ -40,12 +40,12 @@ message C2S_ConnectMsg  {
 
 //服务端返回连接结果
 message S2C_ConnectMsg  {
-	optional ERRORCODE errorCode    = 1;    //错误码
+	optional ERROR_CODE errorCode    = 1;    //错误码
 }
 
 //服务端返回进入房间消息
 message S2C_JoinRoomMsg  {
-	optional int32 roomseatid       = 1;   //自己的位置索引id(1~N)
+	optional int32 roomSeatId       = 1;   //自己的位置索引id(1~N)
 	repeated uint64 others          = 2;   //其他人的id
 	repeated int32 pros             = 3;   //其他人的进度
 	optional int32 randomSeed       = 4;   //随机种子
