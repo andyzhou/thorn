@@ -19,7 +19,7 @@ type KcpServer struct {
 	address string //like ':10086'
 	password string
 	salt string
-	cb iface.IRoomCallback
+	cb iface.IConnCallBack
 	router iface.IConnCallBack
 	protocol iface.IProtocol
 	config iface.IConfig
@@ -85,7 +85,7 @@ func (f *KcpServer) GetConfig() iface.IConfig {
 }
 
 //set room callback
-func (f *KcpServer) SetCallback(cb iface.IRoomCallback) bool {
+func (f *KcpServer) SetCallback(cb iface.IConnCallBack) bool {
 	if cb == nil {
 		return false
 	}
@@ -128,9 +128,6 @@ func (f *KcpServer) runMainProcess() {
 
 		//set upd mode
 		f.setUdpMode(sess)
-
-		//simple testing
-		//go f.handleEcho(sess)
 
 		//new udp connect
 		conn := NewConn(sess, f)

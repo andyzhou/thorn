@@ -7,12 +7,16 @@ import "github.com/golang/protobuf/proto"
  */
 
 type IPacket interface {
-	UnPackHead(data []byte) (IMessage, error)
 	Pack() []byte
 	UnmarshalPB(msg proto.Message) error
-	GetId() uint32
-	GetHeadLen() uint32
+
+	//get
+	GetMessageId() uint8
 	GetData() []byte
+
+	//set
+	SetMessageId(uint8)
+	SetData([]byte)
 }
 
 type IPlayerPacket interface {

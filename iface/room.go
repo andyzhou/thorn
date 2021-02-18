@@ -8,8 +8,6 @@ type IRoom interface {
 	Stop()
 	GetId() uint64
 	GetSecretKey() string
-	GetTimeStamp() int64
-	GetCB() IRoomCallback
 	IsOver() bool
 	HasPlayer(id uint64) bool
 	VerifyToken(string) bool

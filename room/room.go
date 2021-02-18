@@ -27,9 +27,7 @@ type Room struct {
 	roomId uint64 //room id
 	secretKey string
 	closeFlag int32
-	timeStamp int64
 	players []uint64
-	cb iface.IRoomCallback //cb for api client
 	inChan chan iface.IConn
 	outChan chan iface.IConn
 	packetChan chan iface.IPlayerPacket
@@ -43,13 +41,13 @@ func NewRoom(
 			roomId uint64,
 			players []uint64,
 			randomSeed int32,
-			cb iface.IRoomCallback,
+			secretKey string,
 		) *Room {
 	//self init
 	this := &Room{
 		roomId:roomId,
-		cb:cb,
-		players:make([]uint64, 0),
+		secretKey:secretKey,
+		players:players,
 		inChan:make(chan iface.IConn, InOutChanSize),
 		outChan:make(chan iface.IConn, InOutChanSize),
 		packetChan:make(chan iface.IPlayerPacket, MessageChanSize),
@@ -75,14 +73,6 @@ func (f *Room) GetId() uint64 {
 
 func (f *Room) GetSecretKey() string {
 	return f.secretKey
-}
-
-func (f *Room) GetTimeStamp() int64 {
-	return f.timeStamp
-}
-
-func (f *Room) GetCB() iface.IRoomCallback {
-	return f.cb
 }
 
 func (f *Room) IsOver() bool {
@@ -114,6 +104,7 @@ func (f *Room) VerifyToken(token string) bool {
 
 //cb for OnConnect
 func (f *Room) OnConnect(conn iface.IConn) bool {
+	log.Println("Room:OnConnect")
 	conn.SetCallBack(f)
 	f.inChan <- conn
 	return true
@@ -121,6 +112,7 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 
 //cb for OnMessage
 func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
+	log.Println("Room:OnMessage")
 	//try get data
 	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {

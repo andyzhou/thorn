@@ -1,12 +1,10 @@
 package protocol
 
 import (
-	"bytes"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/golang/protobuf/proto"
+	"log"
 )
 
 /*
@@ -16,29 +14,22 @@ import (
 
 /*
 s->c
-|--totalDataLen(uint16)--|--msgIDLen(uint8)--|--------data-----|
-|-------------4----------|---------4---------|--(totalDataLen-4)--|
+|--totalDataLen(uint16)--|--msgIDLen(uint8)--|--------------data--------------|
+|-------------2----------|---------1---------|---------(totalDataLen-2-1)-----|
 */
 
 //inter macro define
-//const (
-//	DataLen      = 2
-//	MessageIDLen = 1
-//
-//	MinPacketLen = DataLen + MessageIDLen
-//	MaxPacketLen = (2 << 8) * DataLen
-//	MaxMessageID = (2 << 8) * MessageIDLen
-//)
-
 const (
-	PacketHeadSize = 8 //dataLen(4byte) + messageId(4byte)
+	DataLen = 2
+	MessageIdLen = 1
+	MinPacketLen = DataLen + MessageIdLen
+	MaxPacketLen = (2 << 8) * DataLen
 	PacketMaxSize = 4096 //4KB
 )
 
 //data info
 type Packet struct {
-	id uint32 //message id
-	len uint32
+	id uint8 //message id
 	data []byte
 }
 
@@ -86,134 +77,79 @@ func NewPacket() *Packet {
 }
 
 func NewPacketWithPara(
-			id uint32,
+			id uint8,
 			data interface{},
 		) *Packet {
-	var (
-		orgData []byte
-		isOk bool
-		err error
-	)
-
 	//self init
-	this := &Packet{
+	p := &Packet{
 		id:id,
 	}
 
 	//process data
-	orgData = make([]byte, 0)
 	switch v := data.(type) {
 	case []byte:
 		{
-			orgData, isOk = data.([]byte)
-			if !isOk {
-				return nil
-			}
+			p.data = v
 		}
 	case proto.Message:
-		orgData, err = proto.Marshal(v)
-		if err != nil {
+		orgData, err := proto.Marshal(v)
+		if err == nil {
+			p.data = orgData
+		}else{
+			log.Println("NewPacketWithPara failed, err:", err)
 			return nil
 		}
 	default:
+		log.Println("NewPacketWithPara error type:", id)
 		return nil
 	}
 
-	//get length
-	this.len = uint32(len(orgData))
-
-	return this
-}
-
-//unpack header
-func (f *Packet) UnPackHead(data []byte) (iface.IMessage, error)  {
-	var (
-		messageId uint32
-		messageLen uint32
-		err error
-	)
-
-	//basic check
-	if data == nil || len(data) <= 0 {
-		return nil, errors.New("invalid parameter")
-	}
-
-	//init data buff
-	dataBuff := bytes.NewReader(data)
-
-	//read length
-	err = binary.Read(dataBuff, binary.LittleEndian, &messageLen)
-	if err != nil {
-		return nil, err
-	}
-
-	//read message id
-	err = binary.Read(dataBuff, binary.LittleEndian, &messageId)
-	if err != nil {
-		return nil, err
-	}
-
-	//read data
-	if messageLen > PacketMaxSize {
-		tips := fmt.Sprintf("too large message data received, message length:%d", messageLen)
-		return nil, errors.New(tips)
-	}
-
-	//init message data
-	message := NewMessage()
-	message.SetId(messageId)
-	message.SetLen(messageLen)
-
-	return message, nil
+	return p
 }
 
 //pack data
 func (f *Packet) Pack() []byte {
-	var (
-		err error
-	)
-
 	//basic check
 	if f.id < 0 || f.data == nil {
 		return nil
 	}
 
 	//init data buff
-	dataBuff := bytes.NewBuffer(nil)
+	//dataBuff := bytes.NewBuffer(nil)
+	dataBuff := make([]byte, MinPacketLen, MinPacketLen)
 
 	//write length
-	err = binary.Write(dataBuff, binary.BigEndian, f.len)
-	if err != nil {
-		return nil
-	}
+	dataLen := len(f.data)
+	binary.BigEndian.PutUint16(dataBuff, uint16(dataLen))
 
 	//write message id
-	err = binary.Write(dataBuff, binary.BigEndian, f.id)
-	if err != nil {
-		return nil
-	}
+	dataBuff[DataLen] = f.id
 
 	//write data
-	err = binary.Write(dataBuff, binary.BigEndian, f.data)
-	if err != nil {
-		return nil
-	}
+	dataBuff = append(dataBuff, f.data...)
 
-	return dataBuff.Bytes()
+	//return dataBuff.Bytes()
+	return dataBuff
 }
 
 func (f *Packet) UnmarshalPB(msg proto.Message) error {
 	return proto.Unmarshal(f.data, msg)
 }
 
+//get
 func (f *Packet) GetData() []byte {
 	return f.data
 }
 
-func (f *Packet) GetId() uint32 {
+func (f *Packet) GetMessageId() uint8 {
 	return f.id
 }
 
-func (f *Packet) GetHeadLen() uint32 {
-	return PacketHeadSize
+//set
+func (f *Packet) SetMessageId(messageId uint8) {
+	f.id = messageId
+}
+
+func (f *Packet) SetData(data []byte) {
+	f.data = data
 }

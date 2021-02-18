@@ -4,6 +4,7 @@ import (
 	"github.com/andyzhou/thorn/iface"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 /*
@@ -11,10 +12,16 @@ import (
  * - dynamic room manager
  */
 
+//inter macro define
+const (
+	RoomCheckRate = 60
+)
+
 //face info
 type Manager struct {
 	roomCount int32
 	rooms *sync.Map
+	closeChan chan bool
 }
 
 //construct
@@ -23,12 +30,16 @@ func NewManager() *Manager {
 	this := &Manager{
 		rooms:new(sync.Map),
 		roomCount:0,
+		closeChan:make(chan bool, 1),
 	}
+	//spawn main process
+	go this.runMainProcess()
 	return this
 }
 
 //close
 func (f *Manager) Close() {
+	f.closeChan <- true
 	if f.rooms == nil {
 		return
 	}
@@ -55,7 +66,9 @@ func (f *Manager) CloseRoom(id uint64) bool {
 		return false
 	}
 	f.rooms.Delete(id)
-	atomic.AddInt32(&f.roomCount, -1)
+	if f.roomCount > 0 {
+		atomic.AddInt32(&f.roomCount, -1)
+	}
 	return true
 }
 
@@ -93,3 +106,52 @@ func (f *Manager) AddRoom(room iface.IRoom) bool {
 //private func
 //////////////
 
+//run main process
+func (f *Manager) runMainProcess() {
+	var (
+		timer = time.NewTicker(time.Second * RoomCheckRate)
+		needQuit bool
+	)
+
+	//defer
+	defer func() {
+		close(f.closeChan)
+	}()
+
+	//loop
+	for {
+		if needQuit {
+			break
+		}
+		select {
+		case <- timer.C:
+			{
+				//clean up rooms
+				f.cleanUpRooms()
+			}
+		case <- f.closeChan:
+			needQuit = true
+			break
+		}
+	}
+}
+
+//clean up closed room
+func (f *Manager) cleanUpRooms() {
+	if f.roomCount <= 0 {
+		return
+	}
+	sf := func(k, v interface{}) bool {
+		room, ok := v.(iface.IRoom)
+		if !ok || !room.IsOver() {
+			return false
+		}
+		//clean up
+		f.rooms.Delete(k)
+		if f.roomCount > 0 {
+			atomic.AddInt32(&f.roomCount, -1)
+		}
+		return true
+	}
+	f.rooms.Range(sf)
+}

@@ -12,6 +12,7 @@ const (
 	UdpServerAddr = "127.0.0.1:6100"
 	Password = "test"
 	Salt = "abc"
+	SecretKey = "testRoom"
 )
 
 func main() {
@@ -30,7 +31,8 @@ func main() {
 	//set callback
 	server.SetCallback(NewRoomCallBack())
 
-	//go createRoom(server)
+	//try create room
+	go createRoom(server)
 
 	//start
 	server.Start()
@@ -51,6 +53,7 @@ func createRoom(server *thorn.Server) {
 			roomId,
 			roomPlayers,
 			1,
+			SecretKey,
 		)
 	fmt.Printf("create room %d success\n", roomId)
 }

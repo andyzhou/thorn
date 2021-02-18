@@ -21,7 +21,7 @@ type Server struct {
 	address string
 	password string
 	salt string
-	cb iface.IRoomCallback //callback for api client
+	cb iface.IConnCallBack //callback for api client
 	kcp iface.IKcpServer
 	wg *sync.WaitGroup
 	wgVal int32
@@ -67,44 +67,10 @@ func (f *Server) Start() {
 	f.wg.Wait()
 }
 
-//create room, step-3
-func (f *Server) CreateRoom(
-			roomId uint64,
-			players []uint64,
-			randSeed int32,
-		) bool {
-	//basic check
-	if roomId <= 0 || players == nil {
-		return false
-	}
 
-	//init room
-	room := room.NewRoom(roomId, players, randSeed, f.cb)
-
-	//add into manager
-	bRet := f.kcp.GetManager().AddRoom(room)
-
-	return bRet
-}
-
-//start room, step-4
-func (f *Server) StartRoom(roomId uint64) bool {
-	//basic check
-	if roomId <= 0 {
-		return false
-	}
-
-	//get room
-	room := f.kcp.GetManager().GetRoom(roomId)
-	if room == nil {
-		return false
-	}
-	return true
-}
-
-//register cb for api client
+//register cb for api client, step-3
 //client should implement this callback
-func (f *Server) SetCallback(cb iface.IRoomCallback) bool {
+func (f *Server) SetCallback(cb iface.IConnCallBack) bool {
 	if cb == nil {
 		return false
 	}
@@ -114,6 +80,46 @@ func (f *Server) SetCallback(cb iface.IRoomCallback) bool {
 	}
 	f.cb = cb
 	return true
+}
+
+
+//create room, step-4
+func (f *Server) CreateRoom(
+			roomId uint64,
+			players []uint64,
+			randSeed int32,
+			secretKey string,
+		) iface.IRoom {
+	//basic check
+	if roomId <= 0 || players == nil {
+		return nil
+	}
+
+	//try check room
+	roomObj := f.GetRoom(roomId)
+	if roomObj != nil {
+		return roomObj
+	}
+
+	//init room
+	roomObj = room.NewRoom(roomId, players, randSeed, secretKey)
+
+	//add into manager
+	f.kcp.GetManager().AddRoom(roomObj)
+
+	return roomObj
+}
+
+//get room
+func (f *Server) GetRoom(roomId uint64) iface.IRoom {
+	//basic check
+	if roomId <= 0 {
+		return nil
+	}
+
+	//get room
+	room := f.kcp.GetManager().GetRoom(roomId)
+	return room
 }
 
 //set config

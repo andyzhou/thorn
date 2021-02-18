@@ -73,10 +73,14 @@ func (f *Conn) IsClosed() bool {
 //do it
 func (f *Conn) Do() {
 	if f.callback != nil {
-		f.callback.OnConnect(f)
+		if !f.callback.OnConnect(f) {
+			return
+		}
 	}
 	if f.server.GetRouter() != nil {
-		f.server.GetRouter().OnConnect(f)
+		if !f.server.GetRouter().OnConnect(f) {
+			return
+		}
 	}
 
 	//spawn three process
@@ -162,6 +166,7 @@ func (f *Conn) writeLoop() {
 	for {
 		select {
 		case <- f.closeChan:
+			log.Println("writeLoop close chan")
 			return
 		case p, ok := <- f.packetSendChan:
 			if ok {
@@ -200,6 +205,7 @@ func (f *Conn) readLoop() {
 		if f.IsClosed() {
 			return
 		}
+
 		//read packet
 		//f.conn.SetReadDeadline(time.Now().Add(readTimeOut))
 		message, err := f.server.GetProtocol().ReadPacket(f.conn)
@@ -222,9 +228,9 @@ func (f *Conn) handleLoop() {
 	log.Println("Conn:handleLoop...")
 	//loop
 	for {
-		log.Println("Conn:handleLoop..")
 		select {
 		case <- f.closeChan:
+			log.Println("handleLoop close chan")
 			return
 		case p, ok := <- f.packetReceiveChan:
 			if ok {

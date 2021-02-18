@@ -21,8 +21,6 @@ func NewRoomCallBack()  *RoomCallBack {
 	return this
 }
 
-//implement of IGameListener
-
 //implement of IConnCallBack
 func (f *RoomCallBack) OnJoinGame(roomId, playerId uint64) {
 	log.Println("RoomCallBack:OnJoinGame")
@@ -40,6 +38,8 @@ func (f *RoomCallBack)  OneGameOver(roomId uint64) {
 	log.Println("RoomCallBack:OneGameOver")
 }
 
+
+//implement of IGameListener
 //cb for connected
 func (f *RoomCallBack) OnConnect(conn iface.IConn) bool {
 	log.Println("RoomCallBack:OnConnect")

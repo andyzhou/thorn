@@ -24,6 +24,7 @@ const (
 	UdpServerAddr = "127.0.0.1:6100"
 	Password = "test"
 	Salt = "abc"
+	SecretKey = "testRoom"
 )
 
 func main()  {
@@ -43,13 +44,13 @@ func main()  {
 	block, _ := kcp.NewAESBlockCrypt(key)
 
 	//dial server
-	client, err := kcp.DialWithOptions(UdpServerAddr, block, 10, 3)
+	session, err := kcp.DialWithOptions(UdpServerAddr, block, 10, 3)
 	if err != nil {
 		log.Println("connect server failed, err:", err)
 		return
 	}
 	log.Println("connect server success")
-	go runMainProcess(client)
+	go runMainProcess(session)
 	wg.Wait()
 }
 
@@ -63,7 +64,7 @@ func writePacket(sess *kcp.UDPSession, packet iface.IPacket) bool {
 	if sess == nil || packet == nil {
 		return false
 	}
-	_, err := sess.Write(packet.Serialize())
+	_, err := sess.Write(packet.Pack())
 	if err != nil {
 		log.Println("writePacket failed, err:", err)
 		return false
@@ -73,12 +74,23 @@ func writePacket(sess *kcp.UDPSession, packet iface.IPacket) bool {
 }
 
 //gen connect room packet
-func genConnRoomPacket(roomId, playerId uint64) *protocol.Packet {
+func genConnRoomPacket(roomId, playerId uint64, token string) *protocol.Packet {
 	msg := &pb.C2S_ConnectMsg{
 		BattleID:proto.Uint64(roomId),
 		PlayerID:proto.Uint64(playerId),
+		Token:&token,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg)
+	return packet
+}
+
+
+//gen room progress packet
+func genRoomProgressPacket(progress int32) *protocol.Packet {
+	msg := &pb.C2S_ProgressMsg {
+		Pro:&progress,
+	}
+	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Progress), msg)
 	return packet
 }
 
@@ -86,24 +98,26 @@ func genConnRoomPacket(roomId, playerId uint64) *protocol.Packet {
 func runMainProcess(sess *kcp.UDPSession) {
 	fmt.Println("connect server success")
 
+	//set up
 	roomId := uint64(1)
 	playerId := uint64(1)
-	//status := 0
-	//
-	////get packet
-	//packet := genConnRoomPacket(roomId, playerId)
-	//byteData := packet.Serialize()
-	//if byteData != nil {
-	//	log.Println(byteData)
-	//}
-	//
-	//return
+	token := SecretKey
+	progress := int32(1)
+
+	//send connect packet
+	packet := genConnRoomPacket(roomId, playerId, token)
+	if packet != nil {
+		writePacket(sess, packet)
+	}
+
+	//loop
 	for {
-		//send login packet
-		packet := genConnRoomPacket(roomId, playerId)
+		//gen progress packet
+		packet = genRoomProgressPacket(progress)
 		if packet != nil {
 			writePacket(sess, packet)
 		}
 		time.Sleep(time.Second)
+		progress++
 	}
 }

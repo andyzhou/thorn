@@ -43,9 +43,8 @@ func (f *Router) OnMessage(
 					packet iface.IPacket,
 				) bool {
 	//get message id
-	messageId := pb.ID(packet.GetId())
-
-	log.Println("Router:OnMessage id:", messageId)
+	messageId := pb.ID(packet.GetMessageId())
+	log.Println("Router:OnMessage, id:", messageId)
 
 	switch messageId {
 	case pb.ID_MSG_Connect://connect
@@ -72,7 +71,7 @@ func (f *Router) OnMessage(
 			if room == nil {
 				ret.ErrorCode = pb.ERRORCODE_ERR_NoRoom.Enum()
 
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), ret), time.Millisecond)
+				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
 				log.Printf("[router] no room player=[%d] room=[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -81,7 +80,7 @@ func (f *Router) OnMessage(
 			//check room status
 			if room.IsOver() {
 				ret.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), ret), time.Millisecond)
+				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
 				log.Printf("[router] room is over player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -90,7 +89,7 @@ func (f *Router) OnMessage(
 			//check player
 			if !room.HasPlayer(playerId) {
 				ret.ErrorCode = pb.ERRORCODE_ERR_NoPlayer.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), ret), time.Millisecond)
+				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
 				log.Printf("[router] !room.HasPlayer(playerID) player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -99,7 +98,7 @@ func (f *Router) OnMessage(
 			//verify token
 			if !room.VerifyToken(token) {
 				ret.ErrorCode = pb.ERRORCODE_ERR_Token.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint32(pb.ID_MSG_Connect), ret), time.Millisecond)
+				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
 				log.Printf("[router] verifyToken failed player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -116,7 +115,7 @@ func (f *Router) OnMessage(
 	case pb.ID_MSG_Heartbeat://heart beat
 		{
 			conn.AsyncWritePacket(
-					protocol.NewPacketWithPara(uint32(pb.ID_MSG_Heartbeat), nil),
+					protocol.NewPacketWithPara(uint8(pb.ID_MSG_Heartbeat), nil),
 					time.Microsecond,
 				)
 			return true
@@ -125,7 +124,7 @@ func (f *Router) OnMessage(
 	case pb.ID_MSG_END://end
 		{
 			conn.AsyncWritePacket(
-					protocol.NewPacketWithPara(uint32(pb.ID_MSG_END), packet.GetData()),
+					protocol.NewPacketWithPara(uint8(pb.ID_MSG_END), packet.GetData()),
 					time.Microsecond,
 				)
 		}

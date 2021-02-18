@@ -10,6 +10,6 @@ type IKcpServer interface {
 	GetRouter() IConnCallBack
 	GetProtocol() IProtocol
 	GetConfig() IConfig
-	SetCallback(cb IRoomCallback) bool
+	SetCallback(cb IConnCallBack) bool
 	SetConfig(config IConfig) bool
 }
