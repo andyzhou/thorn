@@ -21,7 +21,7 @@ enum ID {
     MSG_END = 255;
 }
 
-//错误码
+//error code
 enum ERROR_CODE {
     ERR_Ok          = 0;    //OK
     ERR_NoPlayer    = 1;    //no such player
