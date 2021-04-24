@@ -291,7 +291,7 @@ func (f *Game) Tick(now int64) bool {
 				}else{
 					//all not join game, force finished
 					f.state = GameOver
-					log.Printf("[game(%d)] game over!! nobody ready\n", f.id)
+					log.Printf("[game(%d)] game over! nobody ready\n", f.id)
 				}
 			}
 			return true

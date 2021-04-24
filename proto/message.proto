@@ -1,23 +1,22 @@
 
 package pb;
 
-//消息ID
+//message id
 enum ID {
-
     MSG_BEGIN = 0;
 
-    MSG_Connect     = 1;    //连接(客户端发来第一个消息)
-    MSG_Heartbeat   = 2;    //心跳(服务端返回Connect成功之后每隔1秒发送一个心跳包)
+    MSG_Connect     = 1;    //connect(first message from client side)
+    MSG_Heartbeat   = 2;    //heart beat(one hb packet per second from server side)
 
-    MSG_JoinRoom    = 10;   //进入
-    MSG_Progress    = 20;   //进度
-    MSG_Ready       = 30;   //准备
-    MSG_Start       = 40;   //开始
-    MSG_Frame       = 50;   //帧数据
-    MSG_Input       = 60;   //输入
-    MSG_Result      = 70;   //结果
+    MSG_JoinRoom    = 10;   //join
+    MSG_Progress    = 20;   //progress
+    MSG_Ready       = 30;   //ready
+    MSG_Start       = 40;   //start
+    MSG_Frame       = 50;   //frame data
+    MSG_Input       = 60;   //input
+    MSG_Result      = 70;   //result
 
-    MSG_Close      = 100;   //房间关闭
+    MSG_Close      = 100;   //room closed
 
     MSG_END = 255;
 }

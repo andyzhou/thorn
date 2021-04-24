@@ -27,13 +27,13 @@ const (
 type Conn struct {
 	server iface.IKcpServer
 	conn *kcp.UDPSession //raw connection
-	callback iface.IConnCallBack //cb interface for out side
+	callback iface.IConnCallBack //connect cb interface from out side
 	extraData interface{}
 	closeOnce sync.Once
 	closeFlag int32
 	activeTime int64
-	packetSendChan chan iface.IPacket
-	packetReceiveChan chan iface.IPacket
+	packetSendChan chan iface.IPacket //send chan
+	packetReceiveChan chan iface.IPacket //receive chan
 	closeChan chan bool
 	wg *sync.WaitGroup
 }
@@ -58,6 +58,13 @@ func NewConn(
 
 //close
 func (f *Conn) Close() {
+	//try catch panic
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("Conn:Close panic, err:", err)
+		}
+	}()
+
 	f.closeOnce.Do(func() {
 		atomic.StoreInt32(&f.closeFlag, 1)
 		close(f.closeChan)
@@ -168,6 +175,7 @@ func (f *Conn) AsyncWritePacket(
 
 //write loop
 func (f *Conn) writeLoop() {
+	//try catch panic
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("Conn:writeLoop panic, err:", err)
@@ -207,6 +215,7 @@ func (f *Conn) writeLoop() {
 
 //read loop
 func (f *Conn) readLoop() {
+	//try catch panic
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("Conn:readLoop panic, err:", err)
@@ -240,6 +249,7 @@ func (f *Conn) readLoop() {
 
 //handle loop
 func (f *Conn) handleLoop() {
+	//try catch panic
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("Conn:handleLoop panic, err:", err)

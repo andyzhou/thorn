@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
@@ -52,7 +51,7 @@ func (f *Router) OnMessage(
 			//unpack message
 			msg := &pb.C2S_ConnectMsg{}
 			if err := packet.UnmarshalPB(msg); nil != err {
-				fmt.Printf("[router] msg.UnmarshalPB error=[%s]\n", err.Error())
+				log.Printf("[router] msg.UnmarshalPB error=[%s]\n", err.Error())
 				return false
 			}
 
@@ -70,8 +69,7 @@ func (f *Router) OnMessage(
 			room := f.manager.GetRoom(roomId)
 			if room == nil {
 				ret.ErrorCode = pb.ERRORCODE_ERR_NoRoom.Enum()
-
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
+				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] no room player=[%d] room=[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -80,7 +78,7 @@ func (f *Router) OnMessage(
 			//check room status
 			if room.IsOver() {
 				ret.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
+				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] room is over player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -89,7 +87,7 @@ func (f *Router) OnMessage(
 			//check player
 			if !room.HasPlayer(playerId) {
 				ret.ErrorCode = pb.ERRORCODE_ERR_NoPlayer.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
+				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] !room.HasPlayer(playerID) player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -98,7 +96,7 @@ func (f *Router) OnMessage(
 			//verify token
 			if !room.VerifyToken(token) {
 				ret.ErrorCode = pb.ERRORCODE_ERR_Token.Enum()
-				conn.AsyncWritePacket(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), ret), time.Millisecond)
+				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] verifyToken failed player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
 				return false
@@ -114,19 +112,13 @@ func (f *Router) OnMessage(
 
 	case pb.ID_MSG_Heartbeat://heart beat
 		{
-			conn.AsyncWritePacket(
-					protocol.NewPacketWithPara(uint8(pb.ID_MSG_Heartbeat), nil),
-					time.Microsecond,
-				)
+			f.writePacket(conn, uint8(pb.ID_MSG_Heartbeat), nil)
 			return true
 		}
 
 	case pb.ID_MSG_END://end
 		{
-			conn.AsyncWritePacket(
-					protocol.NewPacketWithPara(uint8(pb.ID_MSG_END), packet.GetData()),
-					time.Microsecond,
-				)
+			f.writePacket(conn, uint8(pb.ID_MSG_END), packet.GetData())
 		}
 	default:
 		return false
@@ -138,4 +130,20 @@ func (f *Router) OnMessage(
 func (f *Router) OnClose(conn iface.IConn) {
 	val := atomic.LoadUint64(&f.totalConn) - 1
 	atomic.StoreUint64(&f.totalConn, val)
+}
+
+//////////////////
+//private func
+//////////////////
+
+//async write packet
+func (f *Router) writePacket(conn iface.IConn, msgId uint8, data interface{}) bool {
+	if conn == nil {
+		return false
+	}
+	conn.AsyncWritePacket(
+		protocol.NewPacketWithPara(msgId, data),
+		time.Microsecond,
+	)
+	return true
 }

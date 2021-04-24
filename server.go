@@ -28,6 +28,7 @@ type Server struct {
 }
 
 //construct, step-1
+//address format: ip/domain:port
 func NewServer(
 			address,
 			password,

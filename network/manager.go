@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/andyzhou/thorn/iface"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,6 +40,13 @@ func NewManager() *Manager {
 
 //close
 func (f *Manager) Close() {
+	//try catch panic
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("Manager:Close panic, err:", err)
+		}
+	}()
+
 	f.closeChan <- true
 	if f.rooms == nil {
 		return
@@ -115,6 +123,8 @@ func (f *Manager) runMainProcess() {
 
 	//defer
 	defer func() {
+		//clean up
+		timer.Stop()
 		close(f.closeChan)
 	}()
 

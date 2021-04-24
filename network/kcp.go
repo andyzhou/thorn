@@ -62,6 +62,7 @@ func NewKcpServer(
 
 //stop
 func (f *KcpServer) Quit() {
+	f.manager.Close()
 	f.Lock()
 	defer f.Unlock()
 	f.needQuit = true
