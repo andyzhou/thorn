@@ -22,7 +22,7 @@ func NewRoomCallBack()  *RoomCallBack {
 }
 
 //implement of IConnCallBack
-func (f *RoomCallBack) OnJoinGame(roomId, playerId uint64) {
+func (f *RoomCallBack) OnJoinGame(conn iface.IConn, roomId, playerId uint64) {
 	log.Println("RoomCallBack:OnJoinGame")
 }
 

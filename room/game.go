@@ -114,7 +114,7 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 
 	//call cb of game listener
 	//this is the callback of room face
-	f.gl.OnJoinGame(f.id, playerId)
+	f.gl.OnJoinGame(conn, f.id, playerId)
 
 	return true
 }

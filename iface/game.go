@@ -5,10 +5,10 @@ package iface
  */
 
 type IGameListener interface {
-	OnJoinGame(uint64, uint64)
-	OnStartGame(uint64)
-	OnLeaveGame(uint64, uint64)
-	OneGameOver(uint64)
+	OnJoinGame(conn IConn, roomId, playerId uint64)
+	OnStartGame(roomId uint64)
+	OnLeaveGame(roomId, playerId uint64)
+	OneGameOver(roomId uint64)
 }
 
 type IGame interface {

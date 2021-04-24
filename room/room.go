@@ -149,7 +149,7 @@ func (f *Room) OnClose(conn iface.IConn) {
 //cb for IGameListener
 //////////////////////
 
-func (f *Room) OnJoinGame(roomId, playerId uint64) {
+func (f *Room) OnJoinGame(conn iface.IConn, roomId, playerId uint64) {
 	log.Printf("room %d OnJoinGame %d\n", roomId, playerId)
 }
 
