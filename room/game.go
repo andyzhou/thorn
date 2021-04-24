@@ -5,7 +5,6 @@ import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
-	"github.com/golang/protobuf/proto"
 	"log"
 	"reflect"
 	"time"
@@ -86,14 +85,14 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 
 	//init message
 	msg := &pb.S2C_ConnectMsg{
-		ErrorCode:pb.ERRORCODE_ERR_Ok.Enum(),
+		ErrorCode:pb.ERROR_CODE_ERR_Ok,
 	}
 
 	//check status
 	if f.state != GameReady && f.state != Gaming {
 		log.Printf("[game(%d)] player[%d] game is over\n", f.id, playerId)
 		//reset msg
-		msg.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
+		msg.ErrorCode = pb.ERROR_CODE_ERR_RoomState
 
 		//notify client
 		p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
@@ -167,8 +166,8 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 	case pb.ID_MSG_JoinRoom://join room
 		{
 			msg := &pb.S2C_JoinRoomMsg{
-				Roomseatid:proto.Int32(player.GetIdx()),
-				RandomSeed:proto.Int32(f.randSeed),
+				RoomSeatId:player.GetIdx(),
+				RandomSeed:f.randSeed,
 			}
 			//loop players
 			for _, v := range f.players {
@@ -199,7 +198,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			player.SetProgress(msg.GetPro())
 			packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Progress),
 						&pb.S2C_ProgressMsg{
-							Id:proto.Uint64(player.GetId()),
+							Id:player.GetId(),
 							Pro:msg.Pro,
 						})
 			//broadcast
@@ -393,7 +392,7 @@ func (f *Game) doStart() {
 	f.startTime = time.Now().Unix()
 
 	msg := &pb.S2C_StartMsg{
-		TimeStamp:proto.Int64(f.startTime),
+		TimeStamp:f.startTime,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Start), msg)
 
@@ -412,11 +411,11 @@ func (f *Game) doGameOver() {
 //push client input
 func (f *Game) pushInput(p iface.IPlayer, msg *pb.C2S_InputMsg) bool {
 	input := &pb.InputData{
-		Id:		proto.Uint64(p.GetId()),
-		Sid:	proto.Int32(msg.GetSid()),
-		X:		proto.Int32(msg.GetX()),
-		Y:		proto.Int32(msg.GetY()),
-		Roomseatid:proto.Int32(p.GetIdx()),
+		Id:		p.GetId(),
+		Sid:	msg.GetSid(),
+		X:		msg.GetX(),
+		Y:		msg.GetY(),
+		RoomSeatId:p.GetIdx(),
 	}
 	f.logic.PushCommand(input)
 	return true
@@ -426,7 +425,7 @@ func (f *Game) pushInput(p iface.IPlayer, msg *pb.C2S_InputMsg) bool {
 func (f *Game) doReconnect(p iface.IPlayer) bool {
 	//init message
 	msg := &pb.S2C_StartMsg{
-		TimeStamp:proto.Int64(f.startTime),
+		TimeStamp:f.startTime,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Start), msg)
 
@@ -447,7 +446,7 @@ func (f *Game) doReconnect(p iface.IPlayer) bool {
 		}
 
 		fd := &pb.FrameData{
-			FrameID:proto.Uint32(i),
+			FrameID:i,
 		}
 		if frameData != nil {
 			fd.Input = frameData.GetData()
@@ -509,7 +508,7 @@ func (f *Game) broadcastFrameData() {
 
 			//init frame data
 			fd := &pb.FrameData{
-				FrameID:proto.Uint32(i),
+				FrameID:i,
 			}
 			if frameData != nil {
 				fd.Input = frameData.GetData()

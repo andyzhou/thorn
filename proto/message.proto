@@ -1,4 +1,4 @@
-
+syntax="proto3";
 package pb;
 
 //message id
@@ -24,78 +24,78 @@ enum ID {
 //错误码
 enum ERROR_CODE {
     ERR_Ok          = 0;    //OK
-    ERR_NoPlayer    = 1;    //没有这个玩家
-    ERR_NoRoom      = 2;    //没有房间
-    ERR_RoomState   = 3;    //房间状态不正确
-    ERR_Token       = 4;    //Token验证失败
+    ERR_NoPlayer    = 1;    //no such player
+    ERR_NoRoom      = 2;    //no such room
+    ERR_RoomState   = 3;    //room state incorrect
+    ERR_Token       = 4;    //token verify failed
 }
 
-//客户端发来的第一个消息
+//connect message, first message from client side
 message C2S_ConnectMsg  {
-    optional uint64 playerID        = 1;    //唯一ID
-    optional uint64 battleID        = 2;    //战斗ID
-	optional string token           = 10;   //令牌
+    uint64 playerID        = 1;    //player id
+    uint64 battleID        = 2;    //battle id
+	string token           = 10;   //token
 }
 
-//服务端返回连接结果
+//connect message from server side (S2C)
 message S2C_ConnectMsg  {
-	optional ERROR_CODE errorCode    = 1;    //错误码
+	ERROR_CODE errorCode    = 1;
 }
 
-//服务端返回进入房间消息
+//join room message (S2C)
 message S2C_JoinRoomMsg  {
-	optional int32 roomSeatId       = 1;   //自己的位置索引id(1~N)
-	repeated uint64 others          = 2;   //其他人的id
-	repeated int32 pros             = 3;   //其他人的进度
-	optional int32 randomSeed       = 4;   //随机种子
+	int32 roomSeatId       = 1;   //room seat id(1~N)
+	repeated uint64 others = 2;   //others
+	repeated int32 pros    = 3;   //others progress
+	int32 randomSeed       = 4;   //random sand
 }
 
-//服务端广播开始游戏消息
+//game start message (S2C)
 message S2C_StartMsg  {
-	optional int64 timeStamp        = 1;   //同步时间戳
+	int64 timeStamp        = 1;
 }
 
-//读条进度
+//read progress (C2S)
 message C2S_ProgressMsg  {
-	optional int32 pro              = 1;   //进度值0~100
+	int32 pro              = 1;   //progress(0~100)
 }
 
-//读条进度
+//read progress (S2C)
 message S2C_ProgressMsg  {
-	optional uint64 id              = 1;   //id
-	optional int32 pro              = 2;   //进度值0~100
+	uint64 id              = 1;   //id
+	int32 pro              = 2;   //progress(0~100)
 }
 
-//操作输入消息
+//client input message (C2S)
 message C2S_InputMsg  {
-    optional int32 sid              = 1;    //操作id
-    optional int32 x                = 2;    //操作位置x
-    optional int32 y                = 3;    //操作位置y
-    optional uint32 frameID         = 4;    //帧ID
+    int32 sid              = 1;    //opt id
+    int32 x                = 2;    //x pos
+    int32 y                = 3;    //y pos
+    uint32 frameID         = 4;    //frame id
 }
 
-//帧存储操作输入
+//frame input data
 message InputData {
-    optional uint64 id              = 1;    //id
-    optional int32 sid              = 2;    //操作id
-    optional int32 x                = 3;    //操作位置x
-    optional int32 y                = 4;    //操作位置y
-    optional int32 roomseatid       = 5;    //操作者的位置索引id(1~N)
+    uint64 id              = 1;    //id
+    int32 sid              = 2;    //opt id
+    int32 x                = 3;    //x pos
+    int32 y                = 4;    //y pos
+    int32 roomSeatId       = 5;    //room seat id(1~N)
 }
 
-//帧数据
+//frame data
 message FrameData {
-    optional uint32 frameID          = 1;   //帧ID
-    repeated InputData input         = 2;   //操作输入
+    uint32 frameID          = 1;   //frame id
+    repeated InputData input         = 2;   //input data
 }
 
-//广播帧消息
+//cast frame data (S2C)
 message S2C_FrameMsg {
-    repeated FrameData frames        = 1;   //帧数据
+    repeated FrameData frames        = 1;   //frame count
 }
 
-//结果消息
+//result (C2S)
 message C2S_ResultMsg {
-    optional uint64 winnerID          = 1; //胜利者ID
+    uint64 winnerID          = 1; //winner id
 }
 

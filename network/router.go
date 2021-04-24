@@ -62,13 +62,13 @@ func (f *Router) OnMessage(
 
 			//ret message
 			ret := &pb.S2C_ConnectMsg{
-				ErrorCode:pb.ERRORCODE_ERR_Ok.Enum(),
+				ErrorCode:pb.ERROR_CODE_ERR_Ok,
 			}
 
 			//get room
 			room := f.manager.GetRoom(roomId)
 			if room == nil {
-				ret.ErrorCode = pb.ERRORCODE_ERR_NoRoom.Enum()
+				ret.ErrorCode = pb.ERROR_CODE_ERR_NoRoom
 				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] no room player=[%d] room=[%d] token=[%s]\n",
 							playerId, roomId, token)
@@ -77,7 +77,7 @@ func (f *Router) OnMessage(
 
 			//check room status
 			if room.IsOver() {
-				ret.ErrorCode = pb.ERRORCODE_ERR_RoomState.Enum()
+				ret.ErrorCode = pb.ERROR_CODE_ERR_RoomState
 				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] room is over player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
@@ -86,7 +86,7 @@ func (f *Router) OnMessage(
 
 			//check player
 			if !room.HasPlayer(playerId) {
-				ret.ErrorCode = pb.ERRORCODE_ERR_NoPlayer.Enum()
+				ret.ErrorCode = pb.ERROR_CODE_ERR_NoPlayer
 				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] !room.HasPlayer(playerID) player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
@@ -95,7 +95,7 @@ func (f *Router) OnMessage(
 
 			//verify token
 			if !room.VerifyToken(token) {
-				ret.ErrorCode = pb.ERRORCODE_ERR_Token.Enum()
+				ret.ErrorCode = pb.ERROR_CODE_ERR_Token
 				f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 				log.Printf("[router] verifyToken failed player=[%d] room==[%d] token=[%s]\n",
 							playerId, roomId, token)
