@@ -6,7 +6,6 @@ import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
-	"github.com/golang/protobuf/proto"
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/crypto/pbkdf2"
 	"log"
@@ -43,15 +42,27 @@ func main()  {
 	key := pbkdf2.Key([]byte(Password), []byte(Salt), 1024, 32, sha1.New)
 	block, _ := kcp.NewAESBlockCrypt(key)
 
+	//create batch players
+	playerIds := []uint64{
+		1,
+		2,
+	}
+	for _, playerId := range playerIds {
+		createPlayer(playerId, &block)
+	}
+	wg.Wait()
+}
+
+//create one player
+func createPlayer(playerId uint64, block *kcp.BlockCrypt) {
 	//dial server
-	session, err := kcp.DialWithOptions(UdpServerAddr, block, 10, 3)
+	session, err := kcp.DialWithOptions(UdpServerAddr, *block, 10, 3)
 	if err != nil {
 		log.Println("connect server failed, err:", err)
 		return
 	}
 	log.Println("connect server success")
-	go runMainProcess(session)
-	wg.Wait()
+	go runMainProcess(session, playerId)
 }
 
 //read packet
@@ -76,9 +87,9 @@ func writePacket(sess *kcp.UDPSession, packet iface.IPacket) bool {
 //gen connect room packet
 func genConnRoomPacket(roomId, playerId uint64, token string) *protocol.Packet {
 	msg := &pb.C2S_ConnectMsg{
-		BattleID:proto.Uint64(roomId),
-		PlayerID:proto.Uint64(playerId),
-		Token:&token,
+		BattleID:roomId,
+		PlayerID:playerId,
+		Token:token,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg)
 	return packet
@@ -93,7 +104,7 @@ func genJoinRoomPacket() *protocol.Packet {
 //gen room progress packet
 func genRoomProgressPacket(progress int32) *protocol.Packet {
 	msg := &pb.C2S_ProgressMsg {
-		Pro:&progress,
+		Pro:progress,
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Progress), msg)
 	return packet
@@ -106,12 +117,11 @@ func genHeartBeatPacket() *protocol.Packet {
 }
 
 //main process
-func runMainProcess(sess *kcp.UDPSession) {
+func runMainProcess(sess *kcp.UDPSession, playerId uint64) {
 	fmt.Println("connect server success")
 
 	//set up
 	roomId := uint64(1)
-	playerId := uint64(1)
 	token := SecretKey
 	progress := int32(1)
 
