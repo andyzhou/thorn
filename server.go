@@ -18,7 +18,7 @@ import (
 
 //face info
 type Server struct {
-	address string
+	address string //host:port
 	password string
 	salt string
 	cb iface.IConnCallBack //callback for api client
