@@ -1,6 +1,8 @@
 package thorn
 
 import (
+	"errors"
+	"fmt"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/network"
 	"github.com/andyzhou/thorn/room"
@@ -30,13 +32,14 @@ type Server struct {
 //construct, step-1
 //address format: ip/domain:port
 func NewServer(
-			address,
+			host string,
+			port int,
 			password,
 			salt string,
 		) *Server {
 	//self init
 	this := &Server{
-		address:  address,
+		address:  fmt.Sprintf("%s:%d", host, port),
 		password: password,
 		salt:     salt,
 		wg:       new(sync.WaitGroup),
@@ -90,16 +93,16 @@ func (f *Server) CreateRoom(
 			players []uint64,
 			randSeed int32,
 			secretKey string,
-		) iface.IRoom {
+		) (iface.IRoom, error) {
 	//basic check
 	if roomId <= 0 || players == nil {
-		return nil
+		return nil, errors.New("room id and players is invalid")
 	}
 
 	//try check room
 	roomObj := f.GetRoom(roomId)
 	if roomObj != nil {
-		return roomObj
+		return roomObj, nil
 	}
 
 	//init room
@@ -108,7 +111,7 @@ func (f *Server) CreateRoom(
 	//add into manager
 	f.kcp.GetManager().AddRoom(roomObj)
 
-	return roomObj
+	return roomObj, nil
 }
 
 //get room

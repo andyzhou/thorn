@@ -24,7 +24,7 @@ const (
 
 //inter macro define
 const (
-	MaxReadyTime          int64  = 20            //max prepare time, force close if no any login
+	MaxReadyTime          int64  = 120            //max prepare time, force close if no any login
 	MaxGameFrame          uint32 = 30*60*3 + 100 //max frames per game round
 	BroadcastOffsetFrames        = 3             //cast per frames
 	kMaxFrameDataPerMsg          = 60            //max message packet per frame

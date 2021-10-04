@@ -129,6 +129,9 @@ func (f *Conn) GetRawConn() net.Conn {
 
 //set call back
 func (f *Conn) SetCallBack(cb iface.IConnCallBack)  {
+	if cb == nil {
+		return
+	}
 	f.callback = cb
 }
 

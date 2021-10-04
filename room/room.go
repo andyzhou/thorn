@@ -112,7 +112,6 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 
 //cb for OnMessage
 func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
-	log.Println("Room:OnMessage, message id:", packet.GetMessageId())
 	//try get player id from extra data
 	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {
@@ -134,14 +133,18 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 	playerPacket.SetPacket(packet)
 
 	//send to chan
-	f.packetChan <- playerPacket
+	select {
+	case f.packetChan <- playerPacket:
+	}
 	bRet = true
 	return
 }
 
 //cb for OnClose
 func (f *Room) OnClose(conn iface.IConn) {
-	f.outChan <- conn
+	select {
+	case f.outChan <- conn:
+	}
 }
 
 

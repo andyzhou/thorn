@@ -14,7 +14,7 @@ type IGameListener interface {
 type IGame interface {
 	Close()
 	GetResult() map[uint64]uint64
-	Tick(int64) bool
+	Tick(now int64) bool
 	ProcessMessage(playerId uint64, packet IPacket) bool
 	JoinGame(playerId uint64, conn IConn) bool
 	LeaveGame(playerId uint64) bool

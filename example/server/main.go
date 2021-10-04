@@ -9,7 +9,8 @@ import (
 
 //inter macro define
 const (
-	UdpServerAddr = "127.0.0.1:6100"
+	ServerHost = "127.0.0.1"
+	ServerPort = 6100
 	Password = "test"
 	Salt = "abc"
 	SecretKey = "testRoom"
@@ -26,7 +27,7 @@ func main() {
 	}()
 
 	//init
-	server := thorn.NewServer(UdpServerAddr, Password, Salt)
+	server := thorn.NewServer(ServerHost, ServerPort, Password, Salt)
 
 	//set callback
 	server.SetCallback(NewRoomCallBack())
