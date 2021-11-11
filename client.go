@@ -59,6 +59,14 @@ func (c *Client) Quit() {
 			log.Println("Client:Quit panic, err:", err)
 		}
 	}()
+	if c.clients == nil {
+		return
+	}
+	for _, v := range c.clients {
+		v.readCloseChan <- true
+		v.writeCloseChan <- true
+	}
+	c.clients = make(map[string]*clientInfo)
 }
 
 //write data
