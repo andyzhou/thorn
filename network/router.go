@@ -30,7 +30,6 @@ func NewRouter(manager iface.IManager) *Router {
 }
 
 func (f *Router) OnConnect(conn iface.IConn) bool {
-	log.Println("Router:OnConnect")
 	atomic.AddUint64(&f.totalConn, 1)
 	return true
 }
@@ -43,8 +42,8 @@ func (f *Router) OnMessage(
 				) bool {
 	//get message id
 	messageId := pb.ID(packet.GetMessageId())
-	log.Println("Router:OnMessage, messageId:", messageId)
 
+	//do some opt by message id
 	switch messageId {
 	case pb.ID_MSG_Connect://connect
 		{
@@ -137,7 +136,11 @@ func (f *Router) OnClose(conn iface.IConn) {
 //////////////////
 
 //async write packet
-func (f *Router) writePacket(conn iface.IConn, msgId uint8, data interface{}) bool {
+func (f *Router) writePacket(
+					conn iface.IConn,
+					msgId uint8,
+					data interface{},
+				) bool {
 	if conn == nil {
 		return false
 	}

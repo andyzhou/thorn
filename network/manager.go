@@ -118,7 +118,6 @@ func (f *Manager) AddRoom(room iface.IRoom) bool {
 func (f *Manager) runMainProcess() {
 	var (
 		timer = time.NewTicker(time.Second * RoomCheckRate)
-		needQuit bool
 	)
 
 	//defer
@@ -130,9 +129,6 @@ func (f *Manager) runMainProcess() {
 
 	//loop
 	for {
-		if needQuit {
-			break
-		}
 		select {
 		case <- timer.C:
 			{
@@ -140,8 +136,7 @@ func (f *Manager) runMainProcess() {
 				f.cleanUpRooms()
 			}
 		case <- f.closeChan:
-			needQuit = true
-			break
+			return
 		}
 	}
 }

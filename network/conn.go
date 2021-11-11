@@ -20,7 +20,6 @@ import (
 
 //inter macro define
 const (
-	ConnPacketChanSize = 1024
 )
 
 //face info
@@ -48,8 +47,8 @@ func NewConn(
 		server:server,
 		conn:sess,
 		activeTime:time.Now().Unix(),
-		packetSendChan:make(chan iface.IPacket, ConnPacketChanSize),
-		packetReceiveChan:make(chan iface.IPacket, ConnPacketChanSize),
+		packetSendChan:make(chan iface.IPacket, define.ConnPacketChanSize),
+		packetReceiveChan:make(chan iface.IPacket, define.ConnPacketChanSize),
 		closeChan:make(chan bool, 1),
 		wg:new(sync.WaitGroup),
 	}
@@ -65,6 +64,7 @@ func (f *Conn) Close() {
 		}
 	}()
 
+	//do some cleanup
 	f.closeOnce.Do(func() {
 		atomic.StoreInt32(&f.closeFlag, 1)
 		close(f.closeChan)
@@ -127,7 +127,7 @@ func (f *Conn) GetRawConn() net.Conn {
 	return f.conn
 }
 
-//set call back
+//set connect call back
 func (f *Conn) SetCallBack(cb iface.IConnCallBack)  {
 	if cb == nil {
 		return
@@ -226,8 +226,6 @@ func (f *Conn) readLoop() {
 		f.Close()
 	}()
 
-	log.Println("Conn:readLoop...")
-
 	//get server config
 	//serverConf := f.server.GetConfig()
 	//readTimeOut := serverConf.GetConnReadTimeout()
@@ -260,7 +258,6 @@ func (f *Conn) handleLoop() {
 		f.Close()
 	}()
 
-	log.Println("Conn:handleLoop...")
 	//loop
 	for {
 		select {
@@ -285,6 +282,7 @@ func (f *Conn) handleLoop() {
 	}
 }
 
+//async do some func
 func (f *Conn) asyncDo(fun func(), wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {

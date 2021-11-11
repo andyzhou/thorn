@@ -117,8 +117,6 @@ func (f *KcpServer) runMainProcess() {
 	if f.listener == nil {
 		return
 	}
-	log.Println("KcpServer:runMainProcess wait connect..")
-
 	//loop
 	for {
 		if f.needQuit {
@@ -130,7 +128,6 @@ func (f *KcpServer) runMainProcess() {
 			log.Println("Server accept failed, err:", err)
 			continue
 		}
-		log.Println("conn sess:", sess.RemoteAddr())
 
 		//set upd mode
 		f.setUdpMode(sess)
@@ -174,7 +171,6 @@ func (f *KcpServer) interInit() {
 		panic(err)
 		return
 	}
-	log.Println("KcpServer:init, listen on ", f.address)
 
 	//init chan limit
 	packetChanLimit := uint32(define.DefaultChanSize)
