@@ -2,6 +2,10 @@ package protocol
 
 import "time"
 
+/*
+ * kcp config, implement of `IConfig`
+ */
+
 //config info
 type Config struct {
 	packetSendChanLimit    uint32        // the limit of packet send channel

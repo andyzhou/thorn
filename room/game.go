@@ -2,6 +2,7 @@ package room
 
 import (
 	"fmt"
+	"github.com/andyzhou/thorn/define"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
@@ -13,24 +14,6 @@ import (
 /*
  * game face, implement of IGame
  */
-
-//game state
-const (
-	GameReady = iota
-	Gaming
-	GameOver
-	GameStop
-)
-
-//inter macro define
-const (
-	MaxReadyTime          int64  = 120            //max prepare time, force close if no any login
-	MaxGameFrame          uint32 = 30*60*3 + 100 //max frames per game round
-	BroadcastOffsetFrames        = 3             //cast per frames
-	kMaxFrameDataPerMsg          = 60            //max message packet per frame
-	kBadNetworkThreshold         = 2             //max time for no heart beat
-)
-
 
 //face info
 type Game struct {
@@ -89,7 +72,7 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 	}
 
 	//check status
-	if f.state != GameReady && f.state != Gaming {
+	if f.state >= define.GameOver {
 		log.Printf("[game(%d)] player[%d] game is over\n", f.id, playerId)
 		//reset msg
 		msg.ErrorCode = pb.ERROR_CODE_ERR_RoomState
@@ -99,9 +82,11 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 		return false
 	}
 
-	//check conn
+	//check conn, if conn not nil, need reset
 	if p.GetConn() != nil {
-		//TODO 这里有多线程操作的危险 如果调 p.client.Close() 会把现有刚进来的玩家踢出
+		//TODO, multi thread issue,
+		//if call p.client.Close(),
+		//will kick entry player
 		p.GetConn().SetExtraData(nil)
 		log.Printf("[game(%d)] player[%d] replace\n", f.id, playerId)
 	}
@@ -183,7 +168,7 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 		}
 	case pb.ID_MSG_Progress://progress
 		{
-			if f.state > GameReady {
+			if f.state > define.GameReady {
 				break
 			}
 
@@ -213,9 +198,9 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 
 	case pb.ID_MSG_Ready://ready
 		{
-			if f.state == GameReady {
+			if f.state == define.GameReady {
 				f.doReady(player)
-			}else if f.state == Gaming {
+			}else if f.state == define.Gaming {
 				log.Printf("[game(%d)] doReconnect [%d]\n", f.id, player.GetId())
 				f.doReady(player)
 				f.doReconnect(player)
@@ -272,39 +257,39 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 func (f *Game) Tick(now int64) bool {
 	//do relate opt by game state
 	switch f.state {
-	case GameReady:
+	case define.GameReady:
 		{
 			delta := now - f.startTime
-			if delta < MaxReadyTime {
+			if delta < define.MaxReadyTime {
 				if f.checkReady() {
 					//start
 					f.doStart()
-					f.state = Gaming
+					f.state = define.Gaming
 				}
 			}else{
 				if f.getOnlinePlayerCount() > 0 {
 					//up to ready time, if player online, force start
 					f.doStart()
-					f.state = Gaming
+					f.state = define.Gaming
 					fmt.Printf("[game(%d)] force start game because ready state is timeout\n", f.id)
 				}else{
 					//all not join game, force finished
-					f.state = GameOver
+					f.state = define.GameOver
 					log.Printf("[game(%d)] game over! nobody ready\n", f.id)
 				}
 			}
 			return true
 		}
-	case Gaming:
+	case define.Gaming:
 		{
 			if f.checkOver() {
-				f.state = GameOver
+				f.state = define.GameOver
 				log.Printf("[game(%d)] game over successfully!!\n", f.id)
 				return true
 			}
 
 			if f.isTimeOut() {
-				f.state = GameOver
+				f.state = define.GameOver
 				log.Printf("[game(%d)] game timeout\n", f.id)
 				return true
 			}
@@ -314,14 +299,14 @@ func (f *Game) Tick(now int64) bool {
 			f.broadcastFrameData()
 			return true
 		}
-	case GameOver:
+	case define.GameOver:
 		{
 			f.doGameOver()
-			f.state = GameStop
+			f.state = define.GameStop
 			log.Printf("[game(%d)] do game over\n", f.id)
 			return true
 		}
-	case GameStop:
+	case define.GameStop:
 		{
 			return false
 		}
@@ -454,7 +439,7 @@ func (f *Game) doReconnect(p iface.IPlayer) bool {
 		frameMsg.Frames = append(frameMsg.Frames, fd)
 		c++
 
-		if c >= kMaxFrameDataPerMsg || i == (framesCount - 1) {
+		if c >= define.KMaxFrameDataPerMsg || i == (framesCount - 1) {
 			p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Frame), frameMsg))
 			c = 0
 			frameMsg = &pb.S2C_FrameMsg{}
@@ -473,10 +458,11 @@ func (f *Game) broadcastFrameData() {
 	frameCount := f.logic.GetFrameCount()
 
 	//check frame
-	if !f.dirty && (frameCount - f.frameCount < BroadcastOffsetFrames) {
+	if !f.dirty && (frameCount - f.frameCount < define.BroadcastOffsetFrames) {
 		return
 	}
 
+	//set key data
 	now := time.Now().Unix()
 
 	for _, p := range f.players {
@@ -491,13 +477,13 @@ func (f *Game) broadcastFrameData() {
 		}
 
 		//check network
-		if now - p.GetLastHeartbeatTime() >= kBadNetworkThreshold {
+		if (now - p.GetLastHeartbeatTime()) >= define.KBadNetworkThreshold {
 			continue
 		}
 
 		//check player last frame
 		i := p.GetSendFrameCount()
-		c := 0
+		c := int64(0)
 		msg := &pb.S2C_FrameMsg{}
 
 		for ; i < frameCount; i++ {
@@ -517,7 +503,7 @@ func (f *Game) broadcastFrameData() {
 			c++
 
 			//if last frame or up to max frame, send them
-			if i == (frameCount - 1) || c >= kMaxFrameDataPerMsg {
+			if i == (frameCount - 1) || c >= define.KMaxFrameDataPerMsg {
 				p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Frame), msg))
 				c = 0
 				msg = &pb.S2C_FrameMsg{}
@@ -588,5 +574,5 @@ func (f *Game) checkOver() bool {
 
 //is time out
 func (f *Game) isTimeOut() bool {
-	return f.logic.GetFrameCount() > MaxGameFrame
+	return f.logic.GetFrameCount() > define.MaxGameFrame
 }

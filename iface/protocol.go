@@ -8,4 +8,5 @@ import "io"
 
 type IProtocol interface {
 	ReadPacket(reader io.Reader) (IPacket, error)
+	SetEndian(bool)
 }

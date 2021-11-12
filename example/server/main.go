@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/andyzhou/thorn"
+	"github.com/andyzhou/thorn/conf"
 	"log"
 	"time"
 )
@@ -49,13 +50,16 @@ func createRoom(server *thorn.Server) {
 		2,
 	}
 
+	//setup room conf
+	roomCfg := &conf.RoomConf{
+		RoomId: roomId,
+		Players: roomPlayers,
+		RandomSeed: 1,
+		SecretKey: SecretKey,
+	}
+
 	//create room
-	server.CreateRoom(
-			roomId,
-			roomPlayers,
-			1,
-			SecretKey,
-		)
+	server.CreateRoom(roomCfg)
 	fmt.Printf("create room %d success\n", roomId)
 }
 

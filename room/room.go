@@ -1,6 +1,8 @@
 package room
 
 import (
+	"github.com/andyzhou/thorn/conf"
+	"github.com/andyzhou/thorn/define"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/protocol"
 	"log"
@@ -13,49 +15,47 @@ import (
  * room face, implement of IRoom
  */
 
-//inter macro define
-const (
-	Frequency = 30 //frame frequency
-	TickTimer = time.Second / Frequency
-	TimeOut = time.Minute * 5
-	InOutChanSize = 1024
-	MessageChanSize = 2048
-)
-
 //face info
 type Room struct {
-	roomId uint64 //room id
-	secretKey string
+	cfg *conf.RoomConf //room config
 	closeFlag int32
-	players []uint64
+	game iface.IGame //game instance
 	inChan chan iface.IConn
 	outChan chan iface.IConn
 	packetChan chan iface.IPlayerPacket
 	closeChan chan bool
-	game iface.IGame `game instance`
 	wg sync.WaitGroup
 }
 
 //construct
-func NewRoom(
-			roomId uint64,
-			players []uint64,
-			randomSeed int32,
-			secretKey string,
-		) *Room {
+func NewRoom(cfg *conf.RoomConf) *Room {
 	//self init
 	this := &Room{
-		roomId:roomId,
-		secretKey:secretKey,
-		players:players,
-		inChan:make(chan iface.IConn, InOutChanSize),
-		outChan:make(chan iface.IConn, InOutChanSize),
-		packetChan:make(chan iface.IPlayerPacket, MessageChanSize),
-		closeChan:make(chan bool, 1),
+		cfg: cfg,
+		inChan: make(chan iface.IConn, define.RoomInOutChanSize),
+		outChan: make(chan iface.IConn, define.RoomInOutChanSize),
+		packetChan: make(chan iface.IPlayerPacket, define.RoomMessageChanSize),
+		closeChan: make(chan bool, 1),
+	}
+
+	//check default values
+	if cfg.Frequency <= 0 {
+		cfg.Frequency = define.RoomFrequency
+	}
+
+	//if room has time limit, setup timer func
+	if cfg.TimeLimit > 0 {
+		duration := time.Duration(cfg.TimeLimit) * time.Second
+		time.AfterFunc(duration, this.cbForCountDown)
 	}
 
 	//init game instance
-	this.game = NewGame(roomId, players, randomSeed, this)
+	this.game = NewGame(
+					cfg.RoomId,
+					cfg.Players,
+					cfg.RandomSeed,
+					this,
+				)
 
 	//spawn main process
 	go this.runMainProcess()
@@ -64,15 +64,22 @@ func NewRoom(
 }
 
 func (f *Room) Stop() {
-	f.closeChan <- true
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("Room:Stop panic, err:", err)
+		}
+	}()
+	select {
+	case f.closeChan <- true:
+	}
 }
 
 func (f *Room) GetId() uint64 {
-	return f.roomId
+	return f.cfg.RoomId
 }
 
 func (f *Room) GetSecretKey() string {
-	return f.secretKey
+	return f.cfg.SecretKey
 }
 
 func (f *Room) IsOver() bool {
@@ -80,10 +87,10 @@ func (f *Room) IsOver() bool {
 }
 
 func (f *Room) HasPlayer(playerId uint64) bool {
-	if playerId <= 0 || f.players == nil {
+	if playerId <= 0 || f.cfg.Players == nil {
 		return false
 	}
-	for _, v := range f.players {
+	for _, v := range f.cfg.Players {
 		if v == playerId {
 			return true
 		}
@@ -92,7 +99,7 @@ func (f *Room) HasPlayer(playerId uint64) bool {
 }
 
 func (f *Room) VerifyToken(token string) bool {
-	if token != f.secretKey {
+	if token != f.cfg.SecretKey {
 		return false
 	}
 	return true
@@ -104,9 +111,11 @@ func (f *Room) VerifyToken(token string) bool {
 
 //cb for OnConnect
 func (f *Room) OnConnect(conn iface.IConn) bool {
-	log.Println("Room:OnConnect")
 	conn.SetCallBack(f)
-	f.inChan <- conn
+	//async send to chan
+	select {
+	case f.inChan <- conn:
+	}
 	return true
 }
 
@@ -132,7 +141,7 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 	playerPacket.SetId(playerId)
 	playerPacket.SetPacket(packet)
 
-	//send to chan
+	//async send to chan
 	select {
 	case f.packetChan <- playerPacket:
 	}
@@ -142,6 +151,7 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 
 //cb for OnClose
 func (f *Room) OnClose(conn iface.IConn) {
+	//async send to chan
 	select {
 	case f.outChan <- conn:
 	}
@@ -169,20 +179,32 @@ func (f *Room) OneGameOver(roomId uint64) {
 	atomic.StoreInt32(&f.closeFlag, 1)
 }
 
-//////////////
+////////////////
 //private func
-//////////////
+////////////////
+
+//cb func for timer out
+//notify all players and start timer for end
+func (f *Room) cbForCountDown() {
+
+}
 
 //main process
 func (f *Room) runMainProcess() {
 	var (
-		ticker = time.NewTicker(TickTimer)
-		timer = time.NewTimer(TimeOut)
+		//ticker = time.NewTicker(define.RoomTickTimer)
+		ticker *time.Ticker
 		conn iface.IConn
 		message iface.IPlayerPacket
 		isOk, bRet bool
 	)
 
+	//init key data
+	seconds := int64(time.Second) / int64(f.cfg.Frequency)
+	duration := time.Duration(seconds)
+	ticker = time.NewTicker(duration)
+
+	//defer
 	defer func() {
 		//clean up
 		f.game.Close()
@@ -193,8 +215,6 @@ func (f *Room) runMainProcess() {
 		close(f.closeChan)
 	}()
 
-	log.Printf("Room %d is running\n", f.roomId)
-
 	//loop
 	for {
 		select {
@@ -204,24 +224,25 @@ func (f *Room) runMainProcess() {
 
 		case <- ticker.C:
 			{
+				//game ticker
 				if !f.game.Tick(time.Now().Unix()) {
 					break
 				}
 			}
 
-		case <- timer.C:
-			//timer out
-			return
-
-		case message, isOk = <- f.packetChan://message
+		case message, isOk = <- f.packetChan:
 			if isOk {
+				//input message from player
 				f.game.ProcessMessage(message.GetId(), message.GetPacket())
 			}
 
-		case conn, isOk = <- f.inChan://join
+		case conn, isOk = <- f.inChan:
 			if isOk {
+				//join room
+				//get player id
 				playerId, ok := conn.GetExtraData().(uint64)
 				if ok {
+					//join game
 					bRet = f.game.JoinGame(playerId, conn)
 					if !bRet {
 						conn.Close()
@@ -231,10 +252,13 @@ func (f *Room) runMainProcess() {
 				}
 			}
 
-		case conn, isOk = <- f.outChan://leave
+		case conn, isOk = <- f.outChan:
 			if isOk {
+				//leave room
+				//get player id
 				playerId, ok := conn.GetExtraData().(uint64)
 				if ok {
+					//leave game
 					bRet = f.game.LeaveGame(playerId)
 					if !bRet {
 						conn.Close()

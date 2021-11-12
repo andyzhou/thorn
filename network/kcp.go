@@ -158,7 +158,13 @@ func (f *KcpServer) setUdpMode(session *kcp.UDPSession) bool {
 //inter init
 func (f *KcpServer) interInit() {
 	//init AES key
-	key := pbkdf2.Key([]byte(f.password), []byte(f.salt), 1024, 32, sha1.New)
+	key := pbkdf2.Key(
+					[]byte(f.password),
+					[]byte(f.salt),
+					1024,
+					32,
+					sha1.New,
+				)
 	block, err := kcp.NewAESBlockCrypt(key)
 	if err != nil {
 		panic(err)
@@ -166,7 +172,12 @@ func (f *KcpServer) interInit() {
 	}
 
 	//init kcp listener, udp protocol
-	f.listener, err = kcp.ListenWithOptions(f.address, block, 10, 3)
+	f.listener, err = kcp.ListenWithOptions(
+							f.address,
+							block,
+							10,
+							3,
+						)
 	if err != nil {
 		panic(err)
 		return

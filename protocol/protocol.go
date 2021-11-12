@@ -14,6 +14,7 @@ import (
 
 //face info
 type Protocol struct {
+	isLittleEndian bool
 }
 
 //construct
@@ -24,8 +25,17 @@ func NewProtocol() *Protocol {
 	return this
 }
 
+//set endian
+func (f *Protocol) SetEndian(isLittleEndian bool) {
+	f.isLittleEndian = isLittleEndian
+}
+
 //read packet
 func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
+	var (
+		dataLen uint16
+	)
+
 	//init header
 	buff := make([]byte, MinPacketLen, MinPacketLen)
 
@@ -37,7 +47,11 @@ func (f *Protocol) ReadPacket(reader io.Reader) (iface.IPacket, error) {
 
 	//unpack header
 	//get data length
-	dataLen := binary.BigEndian.Uint16(buff)
+	if f.isLittleEndian {
+		dataLen = binary.LittleEndian.Uint16(buff)
+	}else{
+		dataLen = binary.BigEndian.Uint16(buff)
+	}
 	if dataLen > MaxPacketLen {
 		return nil, errors.New("data too max")
 	}

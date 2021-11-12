@@ -18,13 +18,9 @@ import (
  * - read, write udp data
  */
 
-//inter macro define
-const (
-)
-
 //face info
 type Conn struct {
-	server iface.IKcpServer
+	server iface.IKcpServer //reference
 	conn *kcp.UDPSession //raw connection
 	callback iface.IConnCallBack //connect cb interface from out side
 	extraData interface{}

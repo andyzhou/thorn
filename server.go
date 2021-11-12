@@ -3,6 +3,7 @@ package thorn
 import (
 	"errors"
 	"fmt"
+	"github.com/andyzhou/thorn/conf"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/network"
 	"github.com/andyzhou/thorn/room"
@@ -72,7 +73,7 @@ func (f *Server) Start() {
 }
 
 
-//register cb for api client, step-3
+//register cb for connect client, step-3
 //client should implement this callback
 func (f *Server) SetCallback(cb iface.IConnCallBack) bool {
 	if cb == nil {
@@ -86,27 +87,23 @@ func (f *Server) SetCallback(cb iface.IConnCallBack) bool {
 	return true
 }
 
-
 //create room, step-4
 func (f *Server) CreateRoom(
-			roomId uint64,
-			players []uint64,
-			randSeed int32,
-			secretKey string,
+			cfg *conf.RoomConf,
 		) (iface.IRoom, error) {
 	//basic check
-	if roomId <= 0 || players == nil {
+	if cfg == nil {
 		return nil, errors.New("room id and players is invalid")
 	}
 
 	//try check room
-	roomObj := f.GetRoom(roomId)
+	roomObj := f.GetRoom(cfg.RoomId)
 	if roomObj != nil {
 		return roomObj, nil
 	}
 
 	//init room
-	roomObj = room.NewRoom(roomId, players, randSeed, secretKey)
+	roomObj = room.NewRoom(cfg)
 
 	//add into manager
 	f.kcp.GetManager().AddRoom(roomObj)
