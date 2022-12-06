@@ -3,6 +3,7 @@ package room
 import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
+	"sync"
 	"sync/atomic"
 )
 
@@ -15,6 +16,7 @@ import (
 type LockStep struct {
 	frames map[uint32]iface.IFrame
 	frameCount uint32
+	sync.RWMutex
 }
 
 //construct
@@ -58,7 +60,6 @@ func (f *LockStep) PushCommand(data *pb.InputData) bool {
 
 	//add data into frame
 	frame.AddData(data)
-
 	return true
 }
 

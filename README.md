@@ -1,3 +1,7 @@
+# what's this
+ 
+ This is a basic udp game service library.
+
 # udp service
 
 - provide base udp service

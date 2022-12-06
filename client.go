@@ -7,6 +7,8 @@ import (
 	"github.com/xtaci/kcp-go"
 	"golang.org/x/crypto/pbkdf2"
 	"log"
+	"runtime/debug"
+	"sync"
 )
 
 /*
@@ -38,16 +40,18 @@ type Client struct {
 	block *kcp.BlockCrypt
 	cbForRead func(*kcp.UDPSession, []byte) bool
 	clients map[string]*clientInfo //tag -> clientInfo
+	sync.RWMutex
 }
 
 //construct
 func NewClient(
-			host string,
-			port int,
+			serverHost string,
+			serverPort int,
 		) *Client {
 	this := &Client{
-		address: fmt.Sprintf("%v:%v", host, port),
+		address: fmt.Sprintf("%v:%v", serverHost, serverPort),
 		readBuffSize: clientReadBuffSize,
+		clients: map[string]*clientInfo{},
 	}
 	return this
 }
@@ -69,6 +73,24 @@ func (c *Client) Quit() {
 	c.clients = make(map[string]*clientInfo)
 }
 
+//close client
+func (c *Client) CloseClient(tag string) error {
+	//check
+	if tag == "" {
+		return errors.New("invalid parameter")
+	}
+	c.Lock()
+	defer c.Unlock()
+	v, ok := c.clients[tag]
+	if !ok || v == nil {
+		return errors.New("no such client")
+	}
+	v.writeCloseChan <- true
+	v.readCloseChan <- true
+	delete(c.clients, tag)
+	return nil
+}
+
 //write data
 func (c *Client) WriteData(tag string, data []byte) error {
 	//check
@@ -77,15 +99,23 @@ func (c *Client) WriteData(tag string, data []byte) error {
 	}
 
 	//get client info by tag
+	c.Lock()
+	defer c.Unlock()
 	clientInfo, ok := c.clients[tag]
 	if !ok || clientInfo == nil {
 		return errors.New("can't get client info by tag")
 	}
 
+	//check chan length
+	if len(clientInfo.writeChan) >= clientWriteChanSize {
+		return errors.New("write chan is full")
+	}
+
 	//defer
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("client:WriteData panic, err:", err)
+			log.Printf("client:WriteData panic, err:%v\n", err)
+			log.Printf("client:WriteData trace:%v\n", string(debug.Stack()))
 		}
 	}()
 

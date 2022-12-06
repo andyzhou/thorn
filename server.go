@@ -58,6 +58,7 @@ func NewServer(
 func (f *Server) Stop() {
 	if f.kcp != nil {
 		f.kcp.Quit()
+		f.kcp = nil
 	}
 	f.syncGroupDone()
 }
@@ -107,7 +108,6 @@ func (f *Server) CreateRoom(
 
 	//add into manager
 	f.kcp.GetManager().AddRoom(roomObj)
-
 	return roomObj, nil
 }
 
@@ -134,11 +134,12 @@ func (f *Server) SetConfig(config iface.IConfig) bool {
 
 //sync group done
 func (f *Server) syncGroupDone() {
-	if f.wgVal <= 0 {
-		return
+	if f.wgVal > 0 {
+		atomic.AddInt32(&f.wgVal, -1)
 	}
-	atomic.AddInt32(&f.wgVal, -1)
-	f.wg.Done()
+	if f.wg != nil {
+		f.wg.Done()
+	}
 }
 
 //inter init

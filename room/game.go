@@ -8,6 +8,7 @@ import (
 	"github.com/andyzhou/thorn/protocol"
 	"log"
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,7 @@ type Game struct {
 	frameCount uint32
 	result map[uint64]uint64
 	dirty bool
+	sync.RWMutex
 }
 
 //construct
