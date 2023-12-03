@@ -18,12 +18,12 @@ import (
 //face info
 type Room struct {
 	cfg *conf.RoomConf //room config
-	closeFlag int32
 	game iface.IGame //game instance
 	inChan chan iface.IConn
 	outChan chan iface.IConn
 	packetChan chan iface.IPlayerPacket
 	closeChan chan bool
+	closeFlag int32
 	wg sync.WaitGroup
 }
 
@@ -64,8 +64,11 @@ func NewRoom(cfg *conf.RoomConf) *Room {
 }
 
 func (f *Room) Stop() {
+	var (
+		m any = nil
+	)
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Room:Stop panic, err:", err)
 		}
 	}()
@@ -121,6 +124,9 @@ func (f *Room) OnConnect(conn iface.IConn) bool {
 
 //cb for OnMessage
 func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
+	var (
+		m any = nil
+	)
 	//try get player id from extra data
 	playerId, ok := conn.GetExtraData().(uint64)
 	if !ok {
@@ -130,7 +136,7 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 
 	//catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			bRet = false
 			return
 		}
@@ -151,6 +157,7 @@ func (f *Room) OnMessage(conn iface.IConn, packet iface.IPacket) (bRet bool) {
 
 //cb for OnClose
 func (f *Room) OnClose(conn iface.IConn) {
+	log.Println("Room.OnClose")
 	//async send to chan
 	select {
 	case f.outChan <- conn:

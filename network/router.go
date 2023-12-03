@@ -16,7 +16,7 @@ import (
 
 //face info
 type Router struct {
-	manager iface.IManager
+	manager iface.IManager //reference
 	totalConn uint64
 }
 
@@ -31,6 +31,9 @@ func NewRouter(manager iface.IManager) *Router {
 
 //cb for connected
 func (f *Router) OnConnect(conn iface.IConn) bool {
+	if conn == nil {
+		return false
+	}
 	atomic.AddUint64(&f.totalConn, 1)
 	return true
 }

@@ -21,9 +21,8 @@ import (
 
 //face info
 type Server struct {
+	conf *ServerConf
 	address string //host:port
-	password string
-	salt string
 	cb iface.IConnCallBack //callback for api client
 	kcp iface.IKcpServer
 	wg *sync.WaitGroup
@@ -32,18 +31,12 @@ type Server struct {
 
 //construct, step-1
 //address format: ip/domain:port
-func NewServer(
-			host string,
-			port int,
-			password,
-			salt string,
-		) *Server {
+func NewServer(conf *ServerConf) *Server {
 	//self init
 	this := &Server{
-		address:  fmt.Sprintf("%s:%d", host, port),
-		password: password,
-		salt:     salt,
-		wg:       new(sync.WaitGroup),
+		address: fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		conf:    conf,
+		wg:      new(sync.WaitGroup),
 	}
 	//inter init
 	this.interInit()
@@ -70,22 +63,22 @@ func (f *Server) Start() {
 	}
 	f.wg.Add(1)
 	atomic.AddInt32(&f.wgVal, 1)
+	fmt.Printf("server listen on %v\n", f.conf.Port)
 	f.wg.Wait()
 }
 
-
 //register cb for connect client, step-3
 //client should implement this callback
-func (f *Server) SetCallback(cb iface.IConnCallBack) bool {
+func (f *Server) SetCallback(cb iface.IConnCallBack) error {
 	if cb == nil {
-		return false
+		return errors.New("connect cb is nil")
 	}
 	if f.kcp != nil {
 		//set call back
 		f.kcp.SetCallback(cb)
 	}
 	f.cb = cb
-	return true
+	return nil
 }
 
 //create room, step-4
@@ -94,7 +87,10 @@ func (f *Server) CreateRoom(
 		) (iface.IRoom, error) {
 	//basic check
 	if cfg == nil {
-		return nil, errors.New("room id and players is invalid")
+		return nil, errors.New("invalid parameter")
+	}
+	if cfg.RoomId <= 0 {
+		return nil, errors.New("room id must exceed 0")
 	}
 
 	//try check room
@@ -103,7 +99,7 @@ func (f *Server) CreateRoom(
 		return roomObj, nil
 	}
 
-	//init room
+	//init new room
 	roomObj = room.NewRoom(cfg)
 
 	//add into manager
@@ -123,7 +119,7 @@ func (f *Server) GetRoom(roomId uint64) iface.IRoom {
 	return room
 }
 
-//set config
+//set kcp config
 func (f *Server) SetConfig(config iface.IConfig) bool {
 	return f.kcp.SetConfig(config)
 }
@@ -142,17 +138,17 @@ func (f *Server) syncGroupDone() {
 	}
 }
 
-//inter init
-func (f *Server) interInit() {
+//signal catch
+func (f *Server) signalCatch() {
 	//init signal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(
-			sig,
-			syscall.SIGINT,
-			syscall.SIGTERM,
-			syscall.SIGHUP,
-			os.Interrupt,
-		)
+		sig,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGHUP,
+		os.Interrupt,
+	)
 
 	//watch signal
 	go func() {
@@ -167,9 +163,15 @@ func (f *Server) interInit() {
 			}
 		}
 	}()
+}
+
+//inter init
+func (f *Server) interInit() {
+	//signal catch
+	f.signalCatch()
 
 	//init kcp server
-	f.kcp = network.NewKcpServer(f.address, f.password, f.salt)
+	f.kcp = network.NewKcpServer(f.address, f.conf.Password, f.conf.Salt)
 
 	//set wait group value
 	atomic.StoreInt32(&f.wgVal, 0)

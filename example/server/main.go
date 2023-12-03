@@ -18,22 +18,32 @@ const (
 )
 
 func main() {
-	//wg := new(sync.WaitGroup)
+	var (
+		m any = nil
+	)
 
 	//defer
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("panic happened, err:", err)
 		}
 	}()
 
-	//init
-	server := thorn.NewServer(ServerHost, ServerPort, Password, Salt)
+	//setup server conf
+	serverConf := &thorn.ServerConf{
+		Host: ServerHost,
+		Port: ServerPort,
+		Password: Password,
+		Salt: Salt,
+	}
+
+	//init server
+	server := thorn.NewServer(serverConf)
 
 	//set callback
 	server.SetCallback(NewRoomCallBack())
 
-	//try create room
+	//create room
 	go createRoom(server)
 
 	//start
@@ -54,7 +64,7 @@ func createRoom(server *thorn.Server) {
 	roomCfg := &conf.RoomConf{
 		RoomId: roomId,
 		Players: roomPlayers,
-		RandomSeed: 1,
+		RandomSeed: int32(time.Now().Unix()),
 		SecretKey: SecretKey,
 	}
 

@@ -9,6 +9,7 @@ import (
 	"log"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,7 +25,8 @@ type Game struct {
 	state int
 	gl iface.IGameListener //original game listener
 	logic iface.ILockStep
-	players map[uint64]iface.IPlayer //player map
+	players sync.Map //player map, playerId -> IPlayer
+	playerCount int32
 	frameCount uint32
 	result map[uint64]uint64
 	dirty bool
@@ -45,26 +47,29 @@ func NewGame(
 		gl:gl,
 		startTime:time.Now().Unix(),
 		logic:NewLockStep(),
-		players:make(map[uint64]iface.IPlayer),
+		players:sync.Map{},
 		result:make(map[uint64]uint64),
 	}
 	//init players
 	for idx, v := range players {
-		this.players[v] = NewPlayer(v, int32(idx + 1))
+		player := NewPlayer(v, int32(idx + 1))
+		this.players.Store(v, player)
 	}
 	return this
 }
 
 //player join game
 func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
-	//basic check
-	if playerId <= 0 || conn == nil || reflect.ValueOf(conn).IsNil() {
+	//check
+	if playerId <= 0 ||
+		conn == nil ||
+		reflect.ValueOf(conn).IsNil() {
 		return false
 	}
 
 	//check player
-	p, ok := f.players[playerId]
-	if !ok {
+	player := f.getPlayer(playerId)
+	if player == nil {
 		return false
 	}
 
@@ -80,29 +85,29 @@ func (f *Game) JoinGame(playerId uint64, conn iface.IConn) bool {
 		msg.ErrorCode = pb.ERROR_CODE_ERR_RoomState
 
 		//notify client
-		p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
+		player.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
 		return false
 	}
 
 	//check conn, if conn not nil, need reset
-	if p.GetConn() != nil {
+	if player.GetConn() != nil {
 		//TODO, multi thread issue,
 		//if call p.client.Close(),
 		//will kick entry player
-		p.GetConn().SetExtraData(nil)
+		player.GetConn().SetExtraData(nil)
 		log.Printf("[game(%d)] player[%d] replace\n", f.id, playerId)
 	}
 
 	//sync conn
-	p.Connect(conn)
+	player.Connect(conn)
 
 	//send message to player
-	p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
+	player.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Connect), msg))
 
 	//call cb of game listener
 	//this is the callback of room face
 	f.gl.OnJoinGame(conn, f.id, playerId)
-
+	atomic.AddInt32(&f.playerCount, 1)
 	return true
 }
 
@@ -114,18 +119,18 @@ func (f *Game) LeaveGame(playerId uint64) bool {
 	}
 
 	//check player
-	p, ok := f.players[playerId]
-	if !ok {
+	player := f.getPlayer(playerId)
+	if player == nil {
 		return false
 	}
 
 	//clean up
-	p.CleanUp()
+	player.CleanUp()
 
 	//call cb of game listener
 	//this is the callback of room face
 	f.gl.OnLeaveGame(f.id, playerId)
-
+	atomic.AddInt32(&f.playerCount, -1)
 	return true
 }
 
@@ -137,8 +142,8 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 	}
 
 	//check player
-	player, ok := f.players[playerId]
-	if !ok {
+	player := f.getPlayer(playerId)
+	if player == nil {
 		return false
 	}
 
@@ -157,13 +162,17 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 				RandomSeed:f.randSeed,
 			}
 			//loop players
-			for _, v := range f.players {
-				if player.GetId() == v.GetId() {
-					continue
+			sf := func(k, v interface{}) bool {
+				p, ok := v.(iface.IPlayer)
+				if ok && p != nil {
+					if p.GetId() != player.GetId() {
+						msg.Others = append(msg.Others, p.GetId())
+						msg.Pros = append(msg.Pros, p.GetProgress())
+					}
 				}
-				msg.Others = append(msg.Others, v.GetId())
-				msg.Pros = append(msg.Pros, v.GetProgress())
+				return true
 			}
+			f.players.Range(sf)
 
 			//notify player
 			player.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_JoinRoom), msg))
@@ -241,7 +250,9 @@ func (f *Game) ProcessMessage(playerId uint64, packet iface.IPacket) bool {
 			}
 
 			//set result
+			f.Lock()
 			f.result[player.GetId()] = msg.GetWinnerID()
+			f.Unlock()
 			log.Printf("[game(%d)] ID_MSG_Result player[%d] winner=[%d]\n",
 						f.id, player.GetId(), msg.GetWinnerID())
 			player.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Result), nil))
@@ -329,10 +340,16 @@ func (f *Game) Close() {
 
 //clean up
 func (f *Game) CleanUp() {
-	for _, v := range f.players {
-		v.CleanUp()
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			player.CleanUp()
+		}
+		f.players.Delete(k)
+		return true
 	}
-	f.players = make(map[uint64]iface.IPlayer)
+	f.players.Range(sf)
+	f.players = sync.Map{}
 }
 
 ////////////////
@@ -341,6 +358,7 @@ func (f *Game) CleanUp() {
 
 //do ready
 func (f *Game) doReady(p iface.IPlayer) {
+	//check
 	if p.IsReady() {
 		return
 	}
@@ -355,12 +373,19 @@ func (f *Game) doReady(p iface.IPlayer) {
 
 //check game is ready
 func (f *Game) checkReady() bool {
-	for _, v := range f.players {
-		if !v.IsReady() {
-			return false
+	isRead := true
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			if player.IsReady() {
+				isRead = false
+				return false
+			}
 		}
+		return true
 	}
-	return true
+	f.players.Range(sf)
+	return isRead
 }
 
 //game start
@@ -370,10 +395,15 @@ func (f *Game) doStart() {
 	f.logic.Reset()
 
 	//init players
-	for _, v := range f.players {
-		v.SetReady()
-		v.SetProgress(100)
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			player.SetReady()
+			player.SetProgress(100)
+		}
+		return true
 	}
+	f.players.Range(sf)
 
 	//init message
 	f.startTime = time.Now().Unix()
@@ -383,7 +413,7 @@ func (f *Game) doStart() {
 	}
 	packet := protocol.NewPacketWithPara(uint8(pb.ID_MSG_Start), msg)
 
-	//broad cast to all
+	//broadcast to all
 	f.broadcast(packet)
 
 	//callback for game start
@@ -466,25 +496,26 @@ func (f *Game) broadcastFrameData() {
 
 	//set key data
 	now := time.Now().Unix()
-
-	for _, p := range f.players {
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if !ok || player == nil {
+			return true
+		}
 		//check online
-		if !p.IsOnline() {
-			continue
+		if !player.IsOnline() {
+			return true
 		}
-
 		//check status
-		if !p.IsReady() {
-			continue
+		if !player.IsReady() {
+			return true
 		}
-
-		//check network
-		if (now - p.GetLastHeartbeatTime()) >= define.KBadNetworkThreshold {
-			continue
+		//check heart beat
+		diff := now - player.GetLastHeartbeatTime()
+		if diff >= define.KBadNetworkThreshold {
+			return true
 		}
-
 		//check player last frame
-		i := p.GetSendFrameCount()
+		i := player.GetSendFrameCount()
 		c := int64(0)
 		msg := &pb.S2C_FrameMsg{}
 
@@ -506,72 +537,109 @@ func (f *Game) broadcastFrameData() {
 
 			//if last frame or up to max frame, send them
 			if i == (frameCount - 1) || c >= define.KMaxFrameDataPerMsg {
-				p.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Frame), msg))
+				player.SendMessage(protocol.NewPacketWithPara(uint8(pb.ID_MSG_Frame), msg))
 				c = 0
 				msg = &pb.S2C_FrameMsg{}
 			}
 		}
 
 		//set frame count
-		p.SetSendFrameCount(frameCount)
+		player.SetSendFrameCount(frameCount)
+		return true
 	}
+	f.players.Range(sf)
 }
 
 //broad cast
 func (f *Game) broadcast(packet iface.IPacket) {
-	for _, v := range f.players {
-		v.SendMessage(packet)
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			player.SendMessage(packet)
+		}
+		return true
 	}
+	f.players.Range(sf)
 }
 
 //broad cast exclude
-func (f *Game) broadcastExclude(msg iface.IPacket, id uint64) {
-	for _, v := range f.players {
-		if v.GetId() == id {
-			continue
+func (f *Game) broadcastExclude(packet iface.IPacket, id uint64) {
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			if player.GetId() != id {
+				player.SendMessage(packet)
+			}
 		}
-		v.SendMessage(msg)
+		return true
 	}
+	f.players.Range(sf)
 }
 
 //get one player
 func (f *Game) getPlayer(id uint64) iface.IPlayer {
-	v, ok := f.players[id]
-	if !ok {
+	if id <= 0 {
 		return nil
 	}
-	return v
+	v, ok := f.players.Load(id)
+	if !ok || v == nil {
+		return nil
+	}
+	player, ok := v.(iface.IPlayer)
+	if ok && player != nil {
+		return player
+	}
+	return nil
 }
 
 //get player count
 func (f *Game) getPlayerCount() int {
-	return len(f.players)
+	return int(f.playerCount)
 }
 
 //get online player count
 func (f *Game) getOnlinePlayerCount() int {
 	num := 0
-	for _, v := range f.players {
-		if v.IsOnline() {
-			num++
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			if player.IsOnline() {
+				num++
+			}
 		}
+		return true
 	}
+	f.players.Range(sf)
 	return num
 }
 
 //check over
 func (f *Game) checkOver() bool {
-	//if some one online and get result, will not over
-	for _, v := range f.players {
-		if !v.IsOnline() {
-			continue
-		}
-		_, ok := f.result[v.GetId()]
-		if !ok {
-			return false
-		}
+	var (
+		checkResult = true
+	)
+	//check
+	if f.playerCount <= 0 {
+		return false
 	}
-	return true
+	//if someone online and get result, will not over
+	sf := func(k, v interface{}) bool {
+		player, ok := v.(iface.IPlayer)
+		if ok && player != nil {
+			if player.IsOnline() {
+				f.Lock()
+				_, subOk := f.result[player.GetId()]
+				f.Unlock()
+				if !subOk {
+					checkResult = false
+					return false
+				}
+			}
+		}
+		return true
+	}
+	f.players.Range(sf)
+	return checkResult
 }
 
 //is time out

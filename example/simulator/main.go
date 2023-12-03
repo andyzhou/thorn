@@ -27,11 +27,14 @@ const (
 )
 
 func main()  {
+	var (
+		m any = nil
+	)
 	wg := new(sync.WaitGroup)
 
 	//defer
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("panic happened, err:", err)
 			wg.Done()
 		}
@@ -124,6 +127,13 @@ func runMainProcess(sess *kcp.UDPSession, playerId uint64) {
 	roomId := uint64(1)
 	token := SecretKey
 	progress := int32(1)
+	maxProgress := 10
+
+	defer func() {
+		if sess != nil {
+			sess.Close()
+		}
+	}()
 
 	//send connect packet
 	packet := genConnRoomPacket(roomId, playerId, token)
@@ -152,5 +162,8 @@ func runMainProcess(sess *kcp.UDPSession, playerId uint64) {
 		}
 		time.Sleep(time.Second)
 		progress++
+		if maxProgress > 0 {
+			break
+		}
 	}
 }

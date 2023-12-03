@@ -7,7 +7,7 @@
 - provide base udp service
 
 ## generate proto
-cd proto
+cd pb
 
 protoc --go_out=plugins=grpc:. *.proto
 

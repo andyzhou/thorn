@@ -53,9 +53,12 @@ func NewConn(
 
 //close
 func (f *Conn) Close() {
+	var (
+		m any = nil
+	)
 	//try catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Conn:Close panic, err:", err)
 		}
 	}()
@@ -136,14 +139,18 @@ func (f *Conn) AsyncWritePacket(
 					packet iface.IPacket,
 					timeout time.Duration,
 				) error {
+	var (
+		m any = nil
+	)
 	//basic check
 	if packet == nil || f.IsClosed() {
 		return define.ErrConnClosing
 	}
 
 	defer func() {
-		if err := recover(); err != nil {
-			err = define.ErrConnClosing
+		if err := recover(); err != m {
+			//err = define.ErrConnClosing
+			log.Println("conn.AsyncWritePacket panic, err:", err)
 		}
 	}()
 
@@ -174,15 +181,16 @@ func (f *Conn) AsyncWritePacket(
 
 //write loop
 func (f *Conn) writeLoop() {
+	var (
+		m any = nil
+	)
 	//try catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Conn:writeLoop panic, err:", err)
 		}
 		f.Close()
 	}()
-
-	log.Println("Conn:writeLoop...")
 
 	//get server config
 	//serverConf := f.server.GetConfig()
@@ -214,9 +222,12 @@ func (f *Conn) writeLoop() {
 
 //read loop
 func (f *Conn) readLoop() {
+	var (
+		m any = nil
+	)
 	//try catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Conn:readLoop panic, err:", err)
 		}
 		f.Close()
@@ -246,9 +257,12 @@ func (f *Conn) readLoop() {
 
 //handle loop
 func (f *Conn) handleLoop() {
+	var (
+		m any = nil
+	)
 	//try catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Conn:handleLoop panic, err:", err)
 		}
 		f.Close()

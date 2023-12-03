@@ -1,95 +1,77 @@
-# github.com/golang/protobuf v1.4.3
+# github.com/golang/protobuf v1.5.3
+## explicit; go 1.9
 github.com/golang/protobuf/proto
-# github.com/klauspost/cpuid v1.2.4
-github.com/klauspost/cpuid
-# github.com/klauspost/reedsolomon v1.9.9
+# github.com/klauspost/cpuid/v2 v2.1.1
+## explicit; go 1.15
+github.com/klauspost/cpuid/v2
+# github.com/klauspost/reedsolomon v1.11.8
+## explicit; go 1.17
 github.com/klauspost/reedsolomon
-# github.com/mmcloughlin/avo v0.0.0-20201216231306-039ef47f4f69
-github.com/mmcloughlin/avo/build
-github.com/mmcloughlin/avo/buildtags
-github.com/mmcloughlin/avo/operand
-github.com/mmcloughlin/avo/reg
-github.com/mmcloughlin/avo/attr
-github.com/mmcloughlin/avo/gotypes
-github.com/mmcloughlin/avo/internal/stack
-github.com/mmcloughlin/avo/ir
-github.com/mmcloughlin/avo/pass
-github.com/mmcloughlin/avo/printer
-github.com/mmcloughlin/avo/src
-github.com/mmcloughlin/avo/x86
-github.com/mmcloughlin/avo/internal/prnt
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161
+## explicit
 github.com/templexxx/cpufeat
 # github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b
+## explicit
 github.com/templexxx/xor
-# github.com/tjfoc/gmsm v1.3.2
+# github.com/tjfoc/gmsm v1.4.1
+## explicit; go 1.14
 github.com/tjfoc/gmsm/sm4
 # github.com/xtaci/kcp-go v5.4.20+incompatible
+## explicit
 github.com/xtaci/kcp-go
-# golang.org/x/crypto v0.0.0-20201217014255-9d1352758620
+# github.com/xtaci/lossyconn v0.0.0-20200209145036-adba10fffc37
+## explicit; go 1.13
+# golang.org/x/crypto v0.16.0
+## explicit; go 1.18
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
+golang.org/x/crypto/internal/alias
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/salsa20
+golang.org/x/crypto/salsa20/salsa
 golang.org/x/crypto/tea
 golang.org/x/crypto/twofish
 golang.org/x/crypto/xtea
-golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/salsa20/salsa
-# golang.org/x/mod v0.3.0
-golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201216054612-986b41b23924
-golang.org/x/net/ipv4
-golang.org/x/net/ipv6
+# golang.org/x/net v0.10.0
+## explicit; go 1.17
 golang.org/x/net/bpf
 golang.org/x/net/internal/iana
 golang.org/x/net/internal/socket
-# golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
+golang.org/x/net/ipv4
+golang.org/x/net/ipv6
+# golang.org/x/sys v0.15.0
+## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-golang.org/x/sys/internal/unsafeheader
-# golang.org/x/tools v0.0.0-20201105001634-bc3cf281b174
-golang.org/x/tools/go/packages
-golang.org/x/tools/go/gcexportdata
-golang.org/x/tools/go/internal/packagesdriver
-golang.org/x/tools/internal/gocommand
-golang.org/x/tools/internal/packagesinternal
-golang.org/x/tools/internal/typesinternal
-golang.org/x/tools/go/internal/gcimporter
-golang.org/x/tools/internal/event
-golang.org/x/tools/internal/event/core
-golang.org/x/tools/internal/event/keys
-golang.org/x/tools/internal/event/label
-# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-golang.org/x/xerrors
-golang.org/x/xerrors/internal
-# google.golang.org/protobuf v1.23.0
+# google.golang.org/protobuf v1.26.0
+## explicit; go 1.9
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
+google.golang.org/protobuf/internal/descfmt
+google.golang.org/protobuf/internal/descopts
+google.golang.org/protobuf/internal/detrand
+google.golang.org/protobuf/internal/encoding/defval
+google.golang.org/protobuf/internal/encoding/messageset
+google.golang.org/protobuf/internal/encoding/tag
+google.golang.org/protobuf/internal/encoding/text
+google.golang.org/protobuf/internal/errors
+google.golang.org/protobuf/internal/filedesc
+google.golang.org/protobuf/internal/filetype
+google.golang.org/protobuf/internal/flags
+google.golang.org/protobuf/internal/genid
+google.golang.org/protobuf/internal/impl
+google.golang.org/protobuf/internal/order
+google.golang.org/protobuf/internal/pragma
+google.golang.org/protobuf/internal/set
+google.golang.org/protobuf/internal/strs
+google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
-google.golang.org/protobuf/internal/encoding/messageset
-google.golang.org/protobuf/internal/encoding/text
-google.golang.org/protobuf/internal/errors
-google.golang.org/protobuf/internal/fieldnum
-google.golang.org/protobuf/internal/flags
-google.golang.org/protobuf/internal/mapsort
-google.golang.org/protobuf/internal/pragma
-google.golang.org/protobuf/internal/set
-google.golang.org/protobuf/internal/strs
-google.golang.org/protobuf/internal/fieldsort
-google.golang.org/protobuf/internal/filedesc
-google.golang.org/protobuf/internal/filetype
-google.golang.org/protobuf/internal/impl
-google.golang.org/protobuf/internal/version
-google.golang.org/protobuf/internal/detrand
-google.golang.org/protobuf/internal/descfmt
-google.golang.org/protobuf/internal/descopts
-google.golang.org/protobuf/internal/encoding/defval
-google.golang.org/protobuf/internal/encoding/tag
-google.golang.org/protobuf/internal/genname
+google.golang.org/protobuf/types/descriptorpb

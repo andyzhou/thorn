@@ -9,16 +9,15 @@ enum ID {
     MSG_Heartbeat   = 2;    //heart beat(one hb packet per second from server side)
 
     MSG_JoinRoom    = 10;   //join
-    MSG_Progress    = 20;   //progress
-    MSG_Ready       = 30;   //ready
-    MSG_Start       = 40;   //start
-    MSG_Frame       = 50;   //frame data
-    MSG_Input       = 60;   //input
-    MSG_Result      = 70;   //result
+    MSG_Progress    = 11;   //progress
+    MSG_Ready       = 12;   //ready
+    MSG_Start       = 13;   //start
+    MSG_Frame       = 14;   //frame data
+    MSG_Input       = 15;   //input
+    MSG_Result      = 16;   //result
+    MSG_Close       = 17;   //room closed
 
-    MSG_Close      = 100;   //room closed
-
-    MSG_END = 255;
+    MSG_END = 20;
 }
 
 //error code

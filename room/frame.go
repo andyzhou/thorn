@@ -1,6 +1,9 @@
 package room
 
-import "github.com/andyzhou/thorn/pb"
+import (
+	"github.com/andyzhou/thorn/pb"
+	"sync"
+)
 
 /*
  * frame data face, implement of IFrame
@@ -10,6 +13,7 @@ import "github.com/andyzhou/thorn/pb"
 type Frame struct {
 	idx uint32
 	data []*pb.InputData
+	sync.RWMutex
 }
 
 //construct
@@ -23,10 +27,14 @@ func NewFrame(idx uint32) *Frame {
 }
 
 func (f *Frame) GetData() []*pb.InputData {
+	f.Lock()
+	defer f.Unlock()
 	return f.data
 }
 
 func (f *Frame) AddData(data *pb.InputData)bool {
+	f.Lock()
+	defer f.Unlock()
 	f.data = append(f.data, data)
 	return true
 }

@@ -114,9 +114,19 @@ func (f *KcpServer) SetConfig(config iface.IConfig) bool {
 
 //run main process
 func (f *KcpServer) runMainProcess() {
+	var (
+		m any = nil
+	)
 	if f.listener == nil {
 		return
 	}
+	//defer
+	defer func() {
+		if err := recover(); err != m {
+			log.Println("kcpServer.mainProcess panic, err:", err)
+		}
+	}()
+
 	//loop
 	for {
 		if f.needQuit {
@@ -167,7 +177,8 @@ func (f *KcpServer) interInit() {
 				)
 	block, err := kcp.NewAESBlockCrypt(key)
 	if err != nil {
-		panic(err)
+		log.Println("kcpServer.interInit, init AES failed, err:", err.Error())
+		panic(any(err))
 		return
 	}
 
@@ -179,7 +190,8 @@ func (f *KcpServer) interInit() {
 							3,
 						)
 	if err != nil {
-		panic(err)
+		log.Println("kcpServer.interInit, init kcp failed, err:", err.Error())
+		panic(any(err))
 		return
 	}
 

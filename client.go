@@ -58,8 +58,11 @@ func NewClient(
 
 //quit
 func (c *Client) Quit() {
+	var (
+		m any = nil
+	)
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Client:Quit panic, err:", err)
 		}
 	}()
@@ -93,6 +96,9 @@ func (c *Client) CloseClient(tag string) error {
 
 //write data
 func (c *Client) WriteData(tag string, data []byte) error {
+	var (
+		m any = nil
+	)
 	//check
 	if tag == "" || data == nil {
 		return errors.New("invalid parameter")
@@ -101,19 +107,19 @@ func (c *Client) WriteData(tag string, data []byte) error {
 	//get client info by tag
 	c.Lock()
 	defer c.Unlock()
-	clientInfo, ok := c.clients[tag]
-	if !ok || clientInfo == nil {
+	client, ok := c.clients[tag]
+	if !ok || client == nil {
 		return errors.New("can't get client info by tag")
 	}
 
 	//check chan length
-	if len(clientInfo.writeChan) >= clientWriteChanSize {
+	if len(client.writeChan) >= clientWriteChanSize {
 		return errors.New("write chan is full")
 	}
 
 	//defer
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Printf("client:WriteData panic, err:%v\n", err)
 			log.Printf("client:WriteData trace:%v\n", string(debug.Stack()))
 		}
@@ -121,7 +127,7 @@ func (c *Client) WriteData(tag string, data []byte) error {
 
 	//async send to chan
 	select {
-	case clientInfo.writeChan <- data:
+	case client.writeChan <- data:
 	}
 	return nil
 }
@@ -231,6 +237,7 @@ func (c *Client) clientWriteProcess(client *clientInfo) bool {
 	var (
 		req []byte
 		isOk bool
+		m any = nil
 	)
 
 	//check
@@ -240,7 +247,7 @@ func (c *Client) clientWriteProcess(client *clientInfo) bool {
 
 	//defer
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Client:clientReadProcess panic, err:", err)
 		}
 		close(client.writeChan)
@@ -264,6 +271,9 @@ func (c *Client) clientWriteProcess(client *clientInfo) bool {
 
 //process for client reader
 func (c *Client) clientReadProcess(client *clientInfo) bool {
+	var (
+		m any = nil
+	)
 	//check
 	if client == nil {
 		return false
@@ -274,7 +284,7 @@ func (c *Client) clientReadProcess(client *clientInfo) bool {
 
 	//defer
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Client:clientReadProcess panic, err:", err)
 		}
 		close(client.readCloseChan)

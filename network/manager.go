@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/andyzhou/thorn/define"
 	"github.com/andyzhou/thorn/iface"
 	"log"
 	"sync"
@@ -13,15 +14,10 @@ import (
  * - dynamic room manager
  */
 
-//inter macro define
-const (
-	RoomCheckRate = 60
-)
-
 //face info
 type Manager struct {
 	roomCount int32
-	rooms *sync.Map //running room map
+	rooms *sync.Map //roomId -> IRoom
 	closeChan chan bool
 }
 
@@ -40,9 +36,12 @@ func NewManager() *Manager {
 
 //close
 func (f *Manager) Close() {
+	var (
+		m any = nil
+	)
 	//try catch panic
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != m {
 			log.Println("Manager:Close panic, err:", err)
 		}
 	}()
@@ -117,7 +116,7 @@ func (f *Manager) AddRoom(room iface.IRoom) bool {
 //run main process
 func (f *Manager) runMainProcess() {
 	var (
-		timer = time.NewTicker(time.Second * RoomCheckRate)
+		timer = time.NewTicker(time.Second * define.RoomCheckRate)
 	)
 
 	//defer
@@ -148,13 +147,14 @@ func (f *Manager) cleanUpRooms() {
 	}
 	sf := func(k, v interface{}) bool {
 		room, ok := v.(iface.IRoom)
-		if !ok || !room.IsOver() {
-			return false
-		}
-		//clean up
-		f.rooms.Delete(k)
-		if f.roomCount > 0 {
-			atomic.AddInt32(&f.roomCount, -1)
+		if ok && room != nil {
+			if room.IsOver() {
+				//clean up
+				f.rooms.Delete(k)
+				if f.roomCount > 0 {
+					atomic.AddInt32(&f.roomCount, -1)
+				}
+			}
 		}
 		return true
 	}

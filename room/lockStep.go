@@ -32,6 +32,8 @@ func NewLockStep() *LockStep {
 
 //reset
 func (f *LockStep) Reset() {
+	f.Lock()
+	defer f.Unlock()
 	f.frames = make(map[uint32]iface.IFrame)
 	f.frameCount = 0
 }
@@ -44,6 +46,8 @@ func (f *LockStep) PushCommand(data *pb.InputData) bool {
 	}
 
 	//check frame
+	f.Lock()
+	defer f.Unlock()
 	frame, ok := f.frames[f.frameCount]
 	if !ok {
 		//init new
@@ -83,11 +87,11 @@ func (f *LockStep) GetRangeFrames(from, to uint32) []iface.IFrame {
 	//init result
 	result := make([]iface.IFrame, 0)
 	for ; from <= to && from <= f.frameCount; from++ {
-		f, ok := f.frames[from]
+		frame, ok := f.frames[from]
 		if !ok {
 			continue
 		}
-		result = append(result, f)
+		result = append(result, frame)
 	}
 	return result
 }
@@ -99,6 +103,8 @@ func (f *LockStep) GetFrame(idx uint32) iface.IFrame {
 	if idx < 0 {
 		return nil
 	}
+	f.Lock()
+	defer f.Unlock()
 	v, ok := f.frames[idx]
 	if !ok {
 		return nil
