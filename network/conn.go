@@ -22,11 +22,11 @@ import (
 type Conn struct {
 	server iface.IKcpServer //reference
 	conn *kcp.UDPSession //raw connection
-	callback iface.IConnCallBack //connect cb interface from out side
+	callback iface.IConnCallBack //connect cb interface from outside
 	extraData interface{}
 	closeOnce sync.Once
 	closeFlag int32
-	activeTime int64
+	activeTime int64 //last active timestamp
 	packetSendChan chan iface.IPacket //send chan
 	packetReceiveChan chan iface.IPacket //receive chan
 	closeChan chan bool
@@ -40,8 +40,8 @@ func NewConn(
 		) *Conn {
 	//self init
 	this := &Conn{
-		server:server,
 		conn:sess,
+		server:server,
 		activeTime:time.Now().Unix(),
 		packetSendChan:make(chan iface.IPacket, define.ConnPacketChanSize),
 		packetReceiveChan:make(chan iface.IPacket, define.ConnPacketChanSize),
@@ -214,6 +214,7 @@ func (f *Conn) writeLoop() {
 					log.Println("Conn:writeLoop, err:", err)
 					return
 				}
+				//update active time
 				f.activeTime = time.Now().Unix()
 			}
 		}
@@ -275,7 +276,7 @@ func (f *Conn) handleLoop() {
 			log.Println("handleLoop close chan")
 			return
 		case p, ok := <- f.packetReceiveChan:
-			if ok {
+			if ok && &p != nil {
 				if f.IsClosed() {
 					return
 				}

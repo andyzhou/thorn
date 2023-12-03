@@ -46,8 +46,10 @@ func (f *Manager) Close() {
 		}
 	}()
 
-	f.closeChan <- true
-	if f.rooms == nil {
+	if f.closeChan != nil {
+		f.closeChan <- true
+	}
+	if f.roomCount <= 0 {
 		return
 	}
 	sf := func(k, v interface{}) bool {
@@ -82,7 +84,7 @@ func (f *Manager) CloseRoom(id uint64) bool {
 //get room
 func (f *Manager) GetRoom(id uint64) iface.IRoom {
 	//basic check
-	if id <= 0 || f.rooms == nil {
+	if id <= 0 || f.roomCount <= 0 {
 		return nil
 	}
 	//check room
@@ -100,7 +102,7 @@ func (f *Manager) GetRoom(id uint64) iface.IRoom {
 //add room
 func (f *Manager) AddRoom(room iface.IRoom) bool {
 	//basic check
-	if room == nil {
+	if room == nil || room.GetId() <= 0 {
 		return false
 	}
 	//sync into map
@@ -117,10 +119,14 @@ func (f *Manager) AddRoom(room iface.IRoom) bool {
 func (f *Manager) runMainProcess() {
 	var (
 		timer = time.NewTicker(time.Second * define.RoomCheckRate)
+		m any = nil
 	)
 
 	//defer
 	defer func() {
+		if err := recover(); err != m {
+			log.Println("manger.mainProcess panic, err:", err)
+		}
 		//clean up
 		timer.Stop()
 		close(f.closeChan)
