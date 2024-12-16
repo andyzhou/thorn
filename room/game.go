@@ -19,27 +19,27 @@ import (
 
 //face info
 type Game struct {
-	id uint64 //room id
-	startTime int64
-	randSeed int32
-	state int
-	gl iface.IGameListener //original game listener
-	logic iface.ILockStep
-	players sync.Map //player map, playerId -> IPlayer
+	id          uint64 //room id
+	startTime   int64
+	randSeed    int32
+	state       int
+	gl          iface.IGameListener //original game listener
+	logic       iface.ILockStep
+	players     sync.Map //player map, playerId -> IPlayer
 	playerCount int32
-	frameCount uint32
-	result map[uint64]uint64
-	dirty bool
+	frameCount  uint32
+	result      map[uint64]uint64
+	dirty       bool
 	sync.RWMutex
 }
 
 //construct
 func NewGame(
-			roomId uint64,
-			players []uint64,
-			randSeed int32,
-			gl iface.IGameListener,
-		) *Game {
+		roomId uint64,
+		players []uint64,
+		randSeed int32,
+		gl iface.IGameListener,
+	) *Game {
 	//self init
 	this := &Game{
 		id:roomId,

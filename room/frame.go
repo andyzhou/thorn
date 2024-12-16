@@ -11,7 +11,7 @@ import (
 
 //face info
 type Frame struct {
-	idx uint32
+	idx  uint32
 	data []*pb.InputData
 	sync.RWMutex
 }

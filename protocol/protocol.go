@@ -20,8 +20,7 @@ type Protocol struct {
 //construct
 func NewProtocol() *Protocol {
 	//self init
-	this := &Protocol{
-	}
+	this := &Protocol{}
 	return this
 }
 

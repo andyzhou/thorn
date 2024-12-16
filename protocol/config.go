@@ -16,9 +16,9 @@ type Config struct {
 
 //construct
 func NewConfig(
-			sendChanLimit, receiveChanLimit uint32,
-			readTimeOut, writeTimeOut time.Duration,
-		) *Config {
+		sendChanLimit, receiveChanLimit uint32,
+		readTimeOut, writeTimeOut time.Duration,
+	) *Config {
 	//self init
 	this := &Config{
 		packetSendChanLimit:sendChanLimit,

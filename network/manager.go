@@ -17,7 +17,7 @@ import (
 //face info
 type Manager struct {
 	roomCount int32
-	rooms *sync.Map //roomId -> IRoom
+	rooms     sync.Map //roomId -> IRoom
 	closeChan chan bool
 }
 
@@ -25,7 +25,7 @@ type Manager struct {
 func NewManager() *Manager {
 	//self init
 	this := &Manager{
-		rooms:new(sync.Map),
+		rooms:sync.Map{},
 		roomCount:0,
 		closeChan:make(chan bool, 1),
 	}
@@ -71,7 +71,7 @@ func (f *Manager) GetRooms() int32 {
 //close room
 func (f *Manager) CloseRoom(id uint64) bool {
 	//basic check
-	if id <= 0 || f.rooms == nil {
+	if id <= 0 || &f.rooms == nil {
 		return false
 	}
 	f.rooms.Delete(id)

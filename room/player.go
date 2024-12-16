@@ -11,14 +11,14 @@ import (
 
 //face info
 type Player struct {
-	id uint64 //player id
-	idx int32 //index of slice
-	isReady bool
-	isOnline bool
+	id                uint64 //player id
+	idx               int32  //index of slice
+	isReady           bool
+	isOnline          bool
 	loadingProgress   int32
 	lastHeartBeatTime int64
-	sendFrameCount uint32
-	client iface.IConn //original udp conn
+	sendFrameCount    uint32
+	client            iface.IConn //original udp conn
 }
 
 //construct

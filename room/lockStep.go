@@ -3,6 +3,7 @@ package room
 import (
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
+	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -14,7 +15,7 @@ import (
 
 //face info
 type LockStep struct {
-	frames map[uint32]iface.IFrame
+	frames     map[uint32]iface.IFrame
 	frameCount uint32
 	sync.RWMutex
 }
@@ -29,13 +30,15 @@ func NewLockStep() *LockStep {
 	return this
 }
 
-
 //reset
 func (f *LockStep) Reset() {
 	f.Lock()
 	defer f.Unlock()
 	f.frames = make(map[uint32]iface.IFrame)
 	f.frameCount = 0
+
+	//gc opt
+	runtime.GC()
 }
 
 //push frame data
@@ -84,8 +87,13 @@ func (f *LockStep) GetRangeFrames(from, to uint32) []iface.IFrame {
 	if from < 0 || to < 0 {
 		return nil
 	}
+
 	//init result
 	result := make([]iface.IFrame, 0)
+
+	//get with locker
+	f.Lock()
+	defer f.Unlock()
 	for ; from <= to && from <= f.frameCount; from++ {
 		frame, ok := f.frames[from]
 		if !ok {
@@ -96,13 +104,14 @@ func (f *LockStep) GetRangeFrames(from, to uint32) []iface.IFrame {
 	return result
 }
 
-
 //get one frame
 func (f *LockStep) GetFrame(idx uint32) iface.IFrame {
 	//basic check
 	if idx < 0 {
 		return nil
 	}
+
+	//get by idx with locker
 	f.Lock()
 	defer f.Unlock()
 	v, ok := f.frames[idx]

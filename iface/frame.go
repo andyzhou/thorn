@@ -10,6 +10,6 @@ import (
 
 type IFrame interface {
 	GetData() []*pb.InputData
-	AddData(data *pb.InputData)bool
-	GetIdx()uint32
+	AddData(data *pb.InputData) bool
+	GetIdx() uint32
 }

@@ -18,25 +18,25 @@ import (
 
 //face info
 type KcpServer struct {
-	address string //like ':10086'
+	address  string //like ':10086'
 	password string
-	salt string
-	cb iface.IConnCallBack
-	router iface.IConnCallBack
+	salt     string
+	cb       iface.IConnCallBack
+	router   iface.IConnCallBack
 	protocol iface.IProtocol
-	config iface.IConfig
+	config   iface.IConfig
 	listener *kcp.Listener
-	manager iface.IManager
+	manager  iface.IManager
 	needQuit bool
 	sync.RWMutex
 }
 
 //construct
 func NewKcpServer(
-			address,
-			password,
-			salt string,
-		) *KcpServer {
+		address,
+		password,
+		salt string,
+	) *KcpServer {
 	//init manager
 	manager := NewManager()
 

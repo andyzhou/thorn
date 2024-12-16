@@ -1,6 +1,7 @@
 package network
 
 import (
+	"errors"
 	"github.com/andyzhou/thorn/iface"
 	"github.com/andyzhou/thorn/pb"
 	"github.com/andyzhou/thorn/protocol"
@@ -16,7 +17,7 @@ import (
 
 //face info
 type Router struct {
-	manager iface.IManager //reference
+	manager   iface.IManager //reference
 	totalConn uint64
 }
 
@@ -40,11 +41,11 @@ func (f *Router) OnConnect(conn iface.IConn) bool {
 
 //room message process
 func (f *Router) OnMessage(
-					conn iface.IConn,
-					packet iface.IPacket,
-				) bool {
+		conn iface.IConn,
+		packet iface.IPacket,
+	) bool {
 	var (
-		bRet bool
+		err error
 	)
 
 	//get message id
@@ -55,23 +56,21 @@ func (f *Router) OnMessage(
 	case pb.ID_MSG_Connect://connect
 		{
 			//process connect message
-			bRet = f.processConnMessage(conn, packet)
-			return bRet
+			err = f.processConnMessage(conn, packet)
 		}
 
 	case pb.ID_MSG_Heartbeat://heart beat
 		{
-			f.writePacket(conn, uint8(pb.ID_MSG_Heartbeat), nil)
-			return true
+			err = f.writePacket(conn, uint8(pb.ID_MSG_Heartbeat), nil)
 		}
 
 	case pb.ID_MSG_END://end
 		{
-			f.writePacket(conn, uint8(pb.ID_MSG_END), packet.GetData())
+			err = f.writePacket(conn, uint8(pb.ID_MSG_END), packet.GetData())
 		}
 	}
 
-	return false
+	return err == nil
 }
 
 //cb for connect closed
@@ -86,19 +85,19 @@ func (f *Router) OnClose(conn iface.IConn) {
 
 //process connect message
 func (f *Router) processConnMessage(
-					conn iface.IConn,
-					packet iface.IPacket,
-				) bool {
+		conn iface.IConn,
+		packet iface.IPacket,
+	) error {
 	//check
 	if conn == nil || packet == nil {
-		return false
+		return errors.New("invalid parameter")
 	}
 
 	//unpack connect message
 	msg := &pb.C2S_ConnectMsg{}
 	if err := packet.UnmarshalPB(msg); nil != err {
 		log.Printf("[router] msg.UnmarshalPB error=[%s]\n", err.Error())
-		return false
+		return err
 	}
 
 	//get key data
@@ -118,7 +117,7 @@ func (f *Router) processConnMessage(
 		f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 		log.Printf("[router] no room player=[%d] room=[%d] token=[%s]\n",
 					playerId, roomId, token)
-		return false
+		return errors.New("can't get room by id")
 	}
 
 	//check room status
@@ -127,7 +126,7 @@ func (f *Router) processConnMessage(
 		f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 		log.Printf("[router] room is over player=[%d] room==[%d] token=[%s]\n",
 					playerId, roomId, token)
-		return false
+		return errors.New("room is over")
 	}
 
 	//check player
@@ -136,7 +135,7 @@ func (f *Router) processConnMessage(
 		f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 		log.Printf("[router] !room.HasPlayer(playerID) player=[%d] room==[%d] token=[%s]\n",
 					playerId, roomId, token)
-		return false
+		return errors.New("room no such player id")
 	}
 
 	//verify token
@@ -145,29 +144,29 @@ func (f *Router) processConnMessage(
 		f.writePacket(conn, uint8(pb.ID_MSG_Connect), ret)
 		log.Printf("[router] verifyToken failed player=[%d] room==[%d] token=[%s]\n",
 					playerId, roomId, token)
-		return false
+		return errors.New("invalid room token")
 	}
 
 	//put extra data
 	conn.SetExtraData(playerId)
 
 	//call cb of room
-	bRet := room.OnConnect(conn)
-	return bRet
+	room.OnConnect(conn)
+	return nil
 }
 
 //async write packet
 func (f *Router) writePacket(
-					conn iface.IConn,
-					msgId uint8,
-					data interface{},
-				) bool {
+		conn iface.IConn,
+		msgId uint8,
+		data interface{},
+	) error {
 	if conn == nil {
-		return false
+		return errors.New("invalid parameter")
 	}
-	conn.AsyncWritePacket(
+	err := conn.AsyncWritePacket(
 		protocol.NewPacketWithPara(msgId, data),
 		time.Microsecond,
 	)
-	return true
+	return err
 }

@@ -14,11 +14,11 @@ type InputData struct {
 
 //construct
 func NewInputData(
-			id uint64,
-			x uint32,
-			y uint32,
-			raw interface{},
-		) *InputData {
+		id uint64,
+		x uint32,
+		y uint32,
+		raw interface{},
+	) *InputData {
 	//self init
 	this := &InputData{
 		id:id,

@@ -8,10 +8,10 @@ import "github.com/golang/protobuf/proto"
 
 //data info
 type Message struct {
-	id uint32 //message id
+	id       uint32 //message id
 	playerId uint64
-	len uint32
-	data []byte
+	len      uint32
+	data     []byte
 }
 
 //construct

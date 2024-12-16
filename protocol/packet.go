@@ -20,27 +20,23 @@ s->c
 
 //inter macro define
 const (
-	DataLen = 2
-	MessageIdLen = 1
-	MinPacketLen = DataLen + MessageIdLen
-	MaxPacketLen = (2 << 8) * DataLen
+	DataLen       = 2
+	MessageIdLen  = 1
+	MinPacketLen  = DataLen + MessageIdLen
+	MaxPacketLen  = (2 << 8) * DataLen
 	PacketMaxSize = 4096 //4KB
 )
 
 //data info
 type Packet struct {
-	id uint8 //message id
+	id   uint8 //message id
 	data []byte
 }
 
 type PlayerPacket struct {
-	id uint64 //player id
+	id     uint64        //player id
 	packet iface.IPacket //original packet
 }
-
-//////////////////////////
-//api for player packet
-//////////////////////////
 
 //construct
 func NewPlayerPacket() *PlayerPacket {
@@ -77,9 +73,9 @@ func NewPacket() *Packet {
 }
 
 func NewPacketWithPara(
-			id uint8,
-			data interface{},
-		) *Packet {
+		id uint8,
+		data interface{},
+	) *Packet {
 	//self init
 	p := &Packet{
 		id:id,

@@ -20,24 +20,24 @@ import (
 
 //face info
 type Conn struct {
-	server iface.IKcpServer //reference
-	conn *kcp.UDPSession //raw connection
-	callback iface.IConnCallBack //connect cb interface from outside
-	extraData interface{}
-	closeOnce sync.Once
-	closeFlag int32
-	activeTime int64 //last active timestamp
-	packetSendChan chan iface.IPacket //send chan
+	server            iface.IKcpServer    //reference
+	conn              *kcp.UDPSession     //raw connection
+	callback          iface.IConnCallBack //connect cb interface from outside
+	extraData         interface{}
+	closeOnce         sync.Once
+	closeFlag         int32
+	activeTime        int64              //last active timestamp
+	packetSendChan    chan iface.IPacket //send chan
 	packetReceiveChan chan iface.IPacket //receive chan
-	closeChan chan bool
-	wg *sync.WaitGroup
+	closeChan         chan bool
+	wg                *sync.WaitGroup
 }
 
 //construct
 func NewConn(
-			sess *kcp.UDPSession,
-			server iface.IKcpServer,
-		) *Conn {
+		sess *kcp.UDPSession,
+		server iface.IKcpServer,
+	) *Conn {
 	//self init
 	this := &Conn{
 		conn:sess,
@@ -135,10 +135,7 @@ func (f *Conn) SetCallBack(cb iface.IConnCallBack)  {
 }
 
 //async send packet
-func (f *Conn) AsyncWritePacket(
-					packet iface.IPacket,
-					timeout time.Duration,
-				) error {
+func (f *Conn) AsyncWritePacket(packet iface.IPacket, timeout time.Duration) error {
 	var (
 		m any = nil
 	)

@@ -17,14 +17,14 @@ import (
 
 //face info
 type Room struct {
-	cfg *conf.RoomConf //room config
-	game iface.IGame //game instance
-	inChan chan iface.IConn
-	outChan chan iface.IConn
+	cfg        *conf.RoomConf //room config
+	game       iface.IGame    //game instance
+	inChan     chan iface.IConn
+	outChan    chan iface.IConn
 	packetChan chan iface.IPlayerPacket
-	closeChan chan bool
-	closeFlag int32
-	wg sync.WaitGroup
+	closeChan  chan bool
+	closeFlag  int32
+	wg         sync.WaitGroup
 }
 
 //construct
@@ -59,7 +59,6 @@ func NewRoom(cfg *conf.RoomConf) *Room {
 
 	//spawn main process
 	go this.runMainProcess()
-
 	return this
 }
 
@@ -164,11 +163,6 @@ func (f *Room) OnClose(conn iface.IConn) {
 	}
 }
 
-
-//////////////////////
-//cb for IGameListener
-//////////////////////
-
 func (f *Room) OnJoinGame(conn iface.IConn, roomId, playerId uint64) {
 	log.Printf("room %d OnJoinGame %d\n", roomId, playerId)
 }
@@ -193,7 +187,6 @@ func (f *Room) OneGameOver(roomId uint64) {
 //cb func for timer out
 //notify all players and start timer for end
 func (f *Room) cbForCountDown() {
-
 }
 
 //main process
