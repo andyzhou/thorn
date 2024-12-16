@@ -9,16 +9,16 @@ import "net"
 
 //server conf
 type ServerConf struct {
-	Host string
-	Port int
+	Host     string
+	Port     int
 	Password string
-	Salt string
+	Salt     string
 }
 
 //connect info
 type VThornConn struct {
-	conn net.Conn
-	roomId uint64
+	conn     net.Conn
+	roomId   uint64
 	playerId uint64
 }
 

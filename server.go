@@ -21,12 +21,12 @@ import (
 
 //face info
 type Server struct {
-	conf *ServerConf
-	address string //host:port
-	cb iface.IConnCallBack //callback for api client
-	kcp iface.IKcpServer
-	wg *sync.WaitGroup
-	wgVal int32
+	conf    *ServerConf
+	address string              //host:port
+	cb      iface.IConnCallBack //callback for api client
+	kcp     iface.IKcpServer
+	wg      *sync.WaitGroup
+	wgVal   int32
 }
 
 //construct, step-1
@@ -82,9 +82,7 @@ func (f *Server) SetCallback(cb iface.IConnCallBack) error {
 }
 
 //create room, step-4
-func (f *Server) CreateRoom(
-			cfg *conf.RoomConf,
-		) (iface.IRoom, error) {
+func (f *Server) CreateRoom(cfg *conf.RoomConf) (iface.IRoom, error) {
 	//basic check
 	if cfg == nil {
 		return nil, errors.New("invalid parameter")
