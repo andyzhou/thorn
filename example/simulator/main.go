@@ -127,7 +127,7 @@ func runMainProcess(sess *kcp.UDPSession, playerId uint64) {
 	roomId := uint64(1)
 	token := SecretKey
 	progress := int32(1)
-	maxProgress := 10
+	//maxProgress := 10
 
 	defer func() {
 		if sess != nil {
@@ -160,10 +160,10 @@ func runMainProcess(sess *kcp.UDPSession, playerId uint64) {
 		if packet != nil {
 			writePacket(sess, packet)
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Second/10)
 		progress++
-		if maxProgress > 0 {
-			break
-		}
+		//if maxProgress > 0 {
+		//	break
+		//}
 	}
 }

@@ -24,13 +24,13 @@ type Conn struct {
 	conn              *kcp.UDPSession     //raw connection
 	callback          iface.IConnCallBack //connect cb interface from outside
 	extraData         interface{}
-	closeOnce         sync.Once
-	closeFlag         int32
 	activeTime        int64              //last active timestamp
 	packetSendChan    chan iface.IPacket //send chan
 	packetReceiveChan chan iface.IPacket //receive chan
+	closeFlag         int32
 	closeChan         chan bool
-	wg                *sync.WaitGroup
+	closeOnce         sync.Once
+	wg                sync.WaitGroup
 }
 
 //construct
@@ -46,7 +46,7 @@ func NewConn(
 		packetSendChan:make(chan iface.IPacket, define.ConnPacketChanSize),
 		packetReceiveChan:make(chan iface.IPacket, define.ConnPacketChanSize),
 		closeChan:make(chan bool, 1),
-		wg:new(sync.WaitGroup),
+		wg:sync.WaitGroup{},
 	}
 	return this
 }
@@ -66,9 +66,9 @@ func (f *Conn) Close() {
 	//do some cleanup
 	f.closeOnce.Do(func() {
 		atomic.StoreInt32(&f.closeFlag, 1)
-		close(f.closeChan)
 		close(f.packetSendChan)
 		close(f.packetReceiveChan)
+		close(f.closeChan)
 		f.conn.Close()
 		f.callback.OnClose(f)
 	})
@@ -97,9 +97,9 @@ func (f *Conn) Do() {
 	}
 
 	//async do three process
-	f.asyncDo(f.handleLoop, f.wg)
-	f.asyncDo(f.readLoop, f.wg)
-	f.asyncDo(f.writeLoop, f.wg)
+	f.asyncDo(f.handleLoop, &f.wg)
+	f.asyncDo(f.readLoop, &f.wg)
+	f.asyncDo(f.writeLoop, &f.wg)
 }
 
 //get extra data
@@ -197,7 +197,7 @@ func (f *Conn) writeLoop() {
 	for {
 		select {
 		case <- f.closeChan:
-			log.Println("writeLoop close chan")
+			//log.Println("writeLoop close chan")
 			return
 		case p, ok := <- f.packetSendChan:
 			if ok {

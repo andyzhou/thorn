@@ -1,6 +1,6 @@
 # what's this
  
- This is a basic udp game service library.
+ This is a basic udp game service library, still in developing.
 
 # udp service
 

@@ -66,6 +66,7 @@ func createRoom(server *thorn.Server) {
 		Players: roomPlayers,
 		RandomSeed: int32(time.Now().Unix()),
 		SecretKey: SecretKey,
+		TimeLimit: 30,
 	}
 
 	//create room

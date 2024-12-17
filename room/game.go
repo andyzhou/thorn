@@ -8,6 +8,7 @@ import (
 	"github.com/andyzhou/thorn/protocol"
 	"log"
 	"reflect"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -340,6 +341,7 @@ func (f *Game) Close() {
 
 //clean up
 func (f *Game) CleanUp() {
+	//clear player
 	sf := func(k, v interface{}) bool {
 		player, ok := v.(iface.IPlayer)
 		if ok && player != nil {
@@ -350,6 +352,9 @@ func (f *Game) CleanUp() {
 	}
 	f.players.Range(sf)
 	f.players = sync.Map{}
+
+	//gc opt
+	runtime.GC()
 }
 
 ////////////////
@@ -373,19 +378,19 @@ func (f *Game) doReady(p iface.IPlayer) {
 
 //check game is ready
 func (f *Game) checkReady() bool {
-	isRead := true
+	isReady := false
 	sf := func(k, v interface{}) bool {
 		player, ok := v.(iface.IPlayer)
 		if ok && player != nil {
 			if player.IsReady() {
-				isRead = false
+				isReady = true
 				return false
 			}
 		}
 		return true
 	}
 	f.players.Range(sf)
-	return isRead
+	return isReady
 }
 
 //game start

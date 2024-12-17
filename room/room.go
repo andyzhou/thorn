@@ -24,6 +24,7 @@ type Room struct {
 	packetChan chan iface.IPlayerPacket
 	closeChan  chan bool
 	closeFlag  int32
+	closeOnce  sync.Once
 	wg         sync.WaitGroup
 }
 
@@ -43,12 +44,6 @@ func NewRoom(cfg *conf.RoomConf) *Room {
 		cfg.Frequency = define.RoomFrequency
 	}
 
-	//if room has time limit, setup timer func
-	if cfg.TimeLimit > 0 {
-		duration := time.Duration(cfg.TimeLimit) * time.Second
-		time.AfterFunc(duration, this.cbForCountDown)
-	}
-
 	//init game instance
 	this.game = NewGame(
 					cfg.RoomId,
@@ -57,23 +52,21 @@ func NewRoom(cfg *conf.RoomConf) *Room {
 					this,
 				)
 
+	//if room has time limit, setup timer func
+	if cfg.TimeLimit > 0 {
+		duration := time.Duration(cfg.TimeLimit) * time.Second
+		time.AfterFunc(duration, this.cbForCountDown)
+	}
+
 	//spawn main process
 	go this.runMainProcess()
 	return this
 }
 
 func (f *Room) Stop() {
-	var (
-		m any = nil
-	)
-	defer func() {
-		if err := recover(); err != m {
-			log.Println("Room:Stop panic, err:", err)
-		}
-	}()
-	select {
-	case f.closeChan <- true:
-	}
+	f.closeOnce.Do(func() {
+		close(f.closeChan)
+	})
 }
 
 func (f *Room) GetId() uint64 {
@@ -187,6 +180,7 @@ func (f *Room) OneGameOver(roomId uint64) {
 //cb func for timer out
 //notify all players and start timer for end
 func (f *Room) cbForCountDown() {
+	//mark game is over time
 }
 
 //main process
@@ -212,7 +206,6 @@ func (f *Room) runMainProcess() {
 		close(f.inChan)
 		close(f.outChan)
 		close(f.packetChan)
-		close(f.closeChan)
 	}()
 
 	//loop
@@ -241,7 +234,7 @@ func (f *Room) runMainProcess() {
 				//join room
 				//get player id
 				playerId, ok := conn.GetExtraData().(uint64)
-				if ok {
+				if ok && playerId > 0 {
 					//join game
 					bRet = f.game.JoinGame(playerId, conn)
 					if !bRet {
@@ -257,7 +250,7 @@ func (f *Room) runMainProcess() {
 				//leave room
 				//get player id
 				playerId, ok := conn.GetExtraData().(uint64)
-				if ok {
+				if ok && playerId > 0 {
 					//leave game
 					bRet = f.game.LeaveGame(playerId)
 					if !bRet {
